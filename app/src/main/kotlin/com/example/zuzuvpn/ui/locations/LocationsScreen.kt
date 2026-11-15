@@ -38,21 +38,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.zuzuvpn.R
-import com.example.zuzuvpn.ui.components.DemoBadge
-import com.example.zuzuvpn.ui.components.FlagBadge
+import com.example.zuzuvpn.ui.components.DevelopmentTag
+import com.example.zuzuvpn.ui.components.LoadIndicator
+import com.example.zuzuvpn.ui.components.LocationBadge
+import com.example.zuzuvpn.ui.components.MascotMood
+import com.example.zuzuvpn.ui.components.RabbitMascot
 import com.example.zuzuvpn.ui.components.LatencyIndicator
-import com.example.zuzuvpn.ui.components.SampleTag
-import com.example.zuzuvpn.ui.home.SampleServers
-import com.example.zuzuvpn.ui.home.ServerLocation
+import com.example.zuzuvpn.BuildConfig
+import com.example.zuzuvpn.data.servers.CountryGroup
+import com.example.zuzuvpn.data.servers.ServerDirectory
+import com.example.zuzuvpn.data.servers.ServerInfo
+import com.example.zuzuvpn.ui.components.PremiumTag
+import com.example.zuzuvpn.vpn.VpnProtocol
 import com.example.zuzuvpn.ui.theme.ZuzuColors
 import com.example.zuzuvpn.ui.theme.ZuzuTheme
 
@@ -67,28 +75,33 @@ fun LocationsRoute(
     LocationsScreen(
         state = state,
         onQueryChange = viewModel::onQueryChange,
-        onSelect = { id ->
-            viewModel.onSelect(id)
+        onSelectServer = { id ->
+            viewModel.onSelectServer(id)
             onLocationChosen()
+        },
+        onSelectCountry = { group ->
+            if (viewModel.onSelectCountry(group)) onLocationChosen()
         },
         modifier = modifier,
     )
 }
 
 /**
- * Location picker with search, a Recommended section and the full list.
- * Every entry is SAMPLE data: latency reads "— ms" and status reads "Not checked".
+ * Country list with flags, cities, availability and load (only when the source supplies them),
+ * search, and a Recommended section when the source marks servers as recommended. Tapping a
+ * country picks its best available server; countries with several servers also list each one.
+ * Never shows addresses, ports, ciphers or credentials, and never invents data.
  */
 @Composable
 fun LocationsScreen(
     state: LocationsUiState,
     onQueryChange: (String) -> Unit,
-    onSelect: (String) -> Unit,
+    onSelectServer: (String) -> Unit,
+    onSelectCountry: (CountryGroup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
     BoxWithConstraints(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        // Below ~340dp the per-row status label is dropped (the grey dot stays).
         val narrow = maxWidth < 340.dp
         val sidePadding = if (maxWidth < 360.dp) 12.dp else 16.dp
         LazyColumn(
@@ -100,18 +113,25 @@ fun LocationsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item(key = "header") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.locations_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (state.isDemo) DemoBadge()
-                }
+                Text(
+                    text = stringResource(R.string.locations_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
             }
-            if (state.isDemo) {
-                item(key = "demo-note") { DemoNotice() }
+            when (state.status) {
+                DirectoryStatus.Loading -> {
+                    item(key = "loading") { CenteredNote(stringResource(R.string.locations_loading)) }
+                    return@LazyColumn
+                }
+                DirectoryStatus.NotConfigured -> {
+                    item(key = "unavailable") { UnavailableState() }
+                    return@LazyColumn
+                }
+                DirectoryStatus.Available -> Unit
+            }
+            if (state.hasDevelopment) {
+                item(key = "dev-note") { DevelopmentNotice() }
             }
             item(key = "search") {
                 LocationSearchField(
@@ -123,12 +143,15 @@ fun LocationsScreen(
 
             if (state.recommended.isNotEmpty()) {
                 item(key = "h-recommended") { SectionHeader(stringResource(R.string.locations_section_recommended)) }
-                items(state.recommended, key = { "rec-" + it.id }) { location ->
+                items(state.recommended, key = { "rec-" + it.id }) { server ->
                     LocationRow(
-                        location = location,
-                        selected = location.id == state.selectedId,
+                        countryCode = server.countryCode,
+                        title = server.name,
+                        subtitle = server.city ?: server.country.takeIf { it != server.name },
+                        server = server,
+                        selected = server.id == state.selectedId,
                         narrow = narrow,
-                        onClick = { onSelect(location.id) },
+                        onClick = { onSelectServer(server.id) },
                     )
                 }
             }
@@ -136,34 +159,97 @@ fun LocationsScreen(
             item(key = "h-all") {
                 SectionHeader(
                     if (state.query.isBlank()) stringResource(R.string.locations_section_all)
-                    else stringResource(R.string.locations_section_results, state.locations.size),
+                    else stringResource(R.string.locations_section_results, state.countries.size),
                 )
             }
-            if (state.locations.isEmpty()) {
+            if (state.countries.isEmpty()) {
                 item(key = "empty") {
-                    Text(
-                        text = stringResource(R.string.locations_empty, state.query.trim()),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+                    CenteredNote(
+                        when {
+                            state.query.isNotBlank() -> stringResource(R.string.locations_empty, state.query.trim())
+                            BuildConfig.DEBUG -> stringResource(R.string.locations_none_debug)
+                            else -> stringResource(R.string.locations_none)
+                        },
                     )
                 }
             } else {
-                items(state.locations, key = { "all-" + it.id }) { location ->
-                    LocationRow(
-                        location = location,
-                        selected = location.id == state.selectedId,
-                        narrow = narrow,
-                        onClick = { onSelect(location.id) },
-                    )
+                state.countries.forEach { group ->
+                    val single = group.servers.singleOrNull()
+                    item(key = "c-" + group.key) {
+                        LocationRow(
+                            countryCode = group.countryCode,
+                            title = group.country,
+                            subtitle = when {
+                                single != null -> single.city
+                                else -> pluralStringResource(R.plurals.locations_server_count, group.servers.size, group.servers.size)
+                            },
+                            server = single,
+                            selected = group.servers.any { it.id == state.selectedId },
+                            narrow = narrow,
+                            onClick = { onSelectCountry(group) },
+                            isDevelopment = group.isDevelopment,
+                            enabled = group.availableCount > 0,
+                        )
+                    }
+                    if (single == null) {
+                        items(group.servers, key = { "s-" + it.id }) { server ->
+                            LocationRow(
+                                countryCode = null,
+                                title = server.city ?: server.name,
+                                subtitle = server.name.takeIf { server.city != null && it != group.country },
+                                server = server,
+                                selected = server.id == state.selectedId,
+                                narrow = narrow,
+                                onClick = { onSelectServer(server.id) },
+                                indent = true,
+                                enabled = server.isAvailable,
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+/** Deliberate state for builds without a location source (the backend is not implemented yet). */
 @Composable
-private fun DemoNotice() {
+private fun UnavailableState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        RabbitMascot(mood = MascotMood.Sleepy, modifier = Modifier.size(140.dp))
+        Text(
+            stringResource(R.string.locations_unavailable_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            stringResource(R.string.locations_unavailable_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun CenteredNote(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(vertical = 24.dp).fillMaxWidth(),
+    )
+}
+
+/** Debug builds list development test servers; make clear they are not Zuzu locations. */
+@Composable
+private fun DevelopmentNotice() {
     Surface(
         color = ZuzuColors.Warning.copy(alpha = 0.08f),
         shape = MaterialTheme.shapes.small,
@@ -171,7 +257,7 @@ private fun DemoNotice() {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = stringResource(R.string.locations_demo_notice),
+            text = stringResource(R.string.locations_dev_notice),
             style = MaterialTheme.typography.bodySmall,
             color = ZuzuColors.TextSecondary,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -231,21 +317,28 @@ private fun SectionHeader(text: String) {
 }
 
 /**
- * One location row. Selected rows get an electric-blue border, tint and a filled radio mark.
- * The right-hand metrics are placeholders: "— ms" and a grey "Not checked" status.
+ * One country or server row. Selected rows get an electric-blue border, tint and a filled radio
+ * mark. Load and availability appear only when [server] carries them (from the source).
  */
 @Composable
 fun LocationRow(
-    location: ServerLocation,
+    countryCode: String?,
+    title: String,
+    subtitle: String?,
+    server: ServerInfo?,
     selected: Boolean,
     narrow: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isDevelopment: Boolean = server?.isDevelopment == true,
+    indent: Boolean = false,
+    enabled: Boolean = server?.isAvailable ?: true,
 ) {
     val shape = MaterialTheme.shapes.medium
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .padding(start = if (indent) 28.dp else 0.dp)
             .clip(shape)
             .background(if (selected) ZuzuColors.ElectricBlue.copy(alpha = 0.12f) else ZuzuColors.NavyRaised)
             .border(
@@ -253,62 +346,59 @@ fun LocationRow(
                 color = if (selected) ZuzuColors.ElectricBlue else ZuzuColors.Outline.copy(alpha = 0.5f),
                 shape = shape,
             )
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FlagBadge(countryCode = location.countryCode, size = 38.dp)
-        Spacer(Modifier.width(12.dp))
+        if (!indent) {
+            LocationBadge(countryCode = countryCode, size = 38.dp)
+            Spacer(Modifier.width(12.dp))
+        }
         Column(Modifier.weight(1f)) {
-            Text(
-                text = location.countryName,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = location.cityName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else ZuzuColors.TextMuted,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                if (location.isSample && !narrow) {
+                if (server?.isPremium == true && !narrow) {
                     Spacer(Modifier.width(6.dp))
-                    SampleTag()
+                    PremiumTag()
+                }
+                if (isDevelopment && !narrow) {
+                    Spacer(Modifier.width(6.dp))
+                    DevelopmentTag()
                 }
             }
+            val detail = when {
+                !enabled -> stringResource(R.string.server_unavailable)
+                isDevelopment && subtitle == null -> stringResource(R.string.location_development_subtitle)
+                else -> subtitle
+            }
+            if (detail != null) {
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            LatencyIndicator(latencyMs = location.latencyMs, compact = true)
-            StatusLabel(showText = !narrow)
+        if (server != null && enabled && (server.latencyMs != null || server.loadPercent != null)) {
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                server.latencyMs?.let { LatencyIndicator(latencyMs = it, compact = true) }
+                if (!narrow) server.loadPercent?.let { LoadIndicator(loadPercent = it) }
+            }
         }
         Spacer(Modifier.width(10.dp))
         SelectionMark(selected = selected)
-    }
-}
-
-/** Neutral availability placeholder: grey dot + "Not checked". Never green in Phase 1. */
-@Composable
-private fun StatusLabel(showText: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).background(ZuzuColors.TextMuted, CircleShape))
-        if (showText) {
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = stringResource(R.string.locations_status_unchecked),
-                style = MaterialTheme.typography.labelSmall,
-                color = ZuzuColors.TextMuted,
-                maxLines = 1,
-                softWrap = false,
-            )
-        }
     }
 }
 
@@ -334,34 +424,30 @@ private fun SelectionMark(selected: Boolean) {
     }
 }
 
+// Preview-only data; never used at runtime.
+private val previewServers = listOf(
+    ServerInfo("p1", "Frankfurt", "Germany", "DE", "Frankfurt", VpnProtocol.Shadowsocks, isRecommended = true, loadPercent = 31),
+    ServerInfo("p2", "Berlin", "Germany", "DE", "Berlin", VpnProtocol.Shadowsocks, loadPercent = 62),
+    ServerInfo("p3", "Japan", "Japan", "JP", "Tokyo", VpnProtocol.Shadowsocks, isPremium = true),
+)
+
 @Preview(name = "Locations · 360dp", widthDp = 360, heightDp = 780, showBackground = true, backgroundColor = 0xFF060B1F)
 @Composable
 private fun LocationsPreview() {
     ZuzuTheme {
         LocationsScreen(
-            state = LocationsUiState(
-                selectedId = SampleServers.default.id,
-                recommended = SampleServers.all.filter { it.isRecommended },
-                locations = SampleServers.all,
-            ),
+            state = LocationsUiState.from(ServerDirectory.Available(previewServers), "", "p1"),
             onQueryChange = {},
-            onSelect = {},
+            onSelectServer = {},
+            onSelectCountry = {},
         )
     }
 }
 
-@Preview(name = "Locations · 320dp", widthDp = 320, heightDp = 640, showBackground = true, backgroundColor = 0xFF060B1F)
+@Preview(name = "Locations · unavailable", widthDp = 360, heightDp = 780, showBackground = true, backgroundColor = 0xFF060B1F)
 @Composable
-private fun LocationsNarrowPreview() {
+private fun LocationsUnavailablePreview() {
     ZuzuTheme {
-        LocationsScreen(
-            state = LocationsUiState(
-                query = "un",
-                selectedId = SampleServers.default.id,
-                locations = SampleServers.all.filter { it.countryName.contains("un", true) },
-            ),
-            onQueryChange = {},
-            onSelect = {},
-        )
+        LocationsScreen(state = LocationsUiState(status = DirectoryStatus.NotConfigured), onQueryChange = {}, onSelectServer = {}, onSelectCountry = {})
     }
 }

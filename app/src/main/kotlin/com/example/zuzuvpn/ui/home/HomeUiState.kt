@@ -1,74 +1,39 @@
 package com.example.zuzuvpn.ui.home
 
+import com.example.zuzuvpn.data.servers.ServerDirectory
+import com.example.zuzuvpn.data.servers.ServerInfo
+import com.example.zuzuvpn.vpn.VpnState
+
 /**
- * Connection phases shown by the home screen.
- *
- * IMPORTANT (Phase 1): these are UI demonstration states only. Nothing here reflects the real
- * WireGuard tunnel. When the screen is wired to [com.wireguard.android.backend.GoBackend] in a
- * later phase, `Connected` must only be shown after the tunnel is UP *and* a recent handshake has
- * been verified via `Backend.getStatistics(...)`.
+ * Visual phase of the home screen (button, mascot, status dot). Derived from the real
+ * [com.example.zuzuvpn.vpn.VpnState]; `Connected` is only shown after test traffic has passed
+ * through the tunnel.
  */
 enum class ConnectionPhase { Disconnected, Connecting, Connected }
 
-/** A server location as the UI displays it. Values come from the backend in a later phase. */
-data class ServerLocation(
-    /** Stable identifier used for selection. */
-    val id: String,
-    val countryName: String,
-    val cityName: String,
-    /** ISO 3166-1 alpha-2 code, used to render the flag. */
-    val countryCode: String,
-    /** Measured round-trip latency, or null when not measured. Never invent a value. */
-    val latencyMs: Int? = null,
-    /** Server load 0..100 from the control plane, or null when unknown. */
-    val loadPercent: Int? = null,
-    /** True for placeholder data that did not come from the backend. */
-    val isSample: Boolean = false,
-    /** Shown in the "Recommended" section of the Locations screen. */
-    val isRecommended: Boolean = false,
-)
+/** Problems the Home screen explains before (or instead of) starting the VPN. */
+enum class HomeNotice {
+    /** No trusted location source in this build (backend not implemented yet). */
+    LocationsUnavailable,
+    /** The user pressed Connect without a location. */
+    NoLocation,
+    /** The selected server is unavailable or has no connection configuration. */
+    LocationNotReady,
+    /** The user declined the system VPN permission dialog. */
+    PermissionDenied,
+}
 
 data class HomeUiState(
-    val phase: ConnectionPhase = ConnectionPhase.Disconnected,
-    /** Always true in Phase 1. The UI must label every state as a demo while this is true. */
-    val isDemo: Boolean = true,
-    /** Seconds elapsed in the demo "connected" state (a UI timer, not a tunnel session). */
-    val demoElapsedSeconds: Long = 0,
-    val server: ServerLocation = SampleServers.default,
-)
-
-/**
- * SAMPLE locations for the UI preview. These are not Zuzu servers: there is no latency,
- * load or availability data, and every entry is marked [ServerLocation.isSample].
- */
-object SampleServers {
-    private fun sample(id: String, country: String, city: String, code: String, recommended: Boolean = false) =
-        ServerLocation(
-            id = id,
-            countryName = country,
-            cityName = city,
-            countryCode = code,
-            latencyMs = null,
-            loadPercent = null,
-            isSample = true,
-            isRecommended = recommended,
-        )
-
-    val all: List<ServerLocation> = listOf(
-        sample("us-nyc", "United States", "New York", "US", recommended = true),
-        sample("gb-lon", "United Kingdom", "London", "GB", recommended = true),
-        sample("de-fra", "Germany", "Frankfurt", "DE", recommended = true),
-        sample("sg-sin", "Singapore", "Singapore", "SG", recommended = true),
-        sample("ae-dxb", "United Arab Emirates", "Dubai", "AE"),
-        sample("au-syd", "Australia", "Sydney", "AU"),
-        sample("ca-tor", "Canada", "Toronto", "CA"),
-        sample("fr-par", "France", "Paris", "FR"),
-        sample("in-bom", "India", "Mumbai", "IN"),
-        sample("jp-tyo", "Japan", "Tokyo", "JP"),
-        sample("nl-ams", "Netherlands", "Amsterdam", "NL"),
-        sample("tr-ist", "Turkey", "Istanbul", "TR"),
-        sample("us-lax", "United States", "Los Angeles", "US"),
-    )
-
-    val default: ServerLocation = all.first()
+    val vpn: VpnState = VpnState.Disconnected,
+    val directory: ServerDirectory = ServerDirectory.Loading,
+    /** The selected server, if it exists in the current directory. */
+    val location: ServerInfo? = null,
+    val notice: HomeNotice? = null,
+) {
+    val phase: ConnectionPhase
+        get() = when (vpn) {
+            is VpnState.Connected -> ConnectionPhase.Connected
+            is VpnState.Connecting, VpnState.Disconnecting -> ConnectionPhase.Connecting
+            VpnState.Disconnected, is VpnState.Failed -> ConnectionPhase.Disconnected
+        }
 }

@@ -1,5 +1,10 @@
 package com.example.zuzuvpn.ui.settings
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,8 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,18 +31,19 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.example.zuzuvpn.BuildConfig
 import com.example.zuzuvpn.R
-import com.example.zuzuvpn.engine.EngineInfo
 import com.example.zuzuvpn.ui.theme.ZuzuColors
 
+/**
+ * Consumer settings. Contains no server, protocol or credential configuration.
+ * [developerEntry] is provided only by debug builds.
+ */
 @Composable
 fun SettingsScreen(
     onOpenLicenses: () -> Unit,
     modifier: Modifier = Modifier,
+    developerEntry: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val engineVersion by produceState<Result<String>?>(initialValue = null) {
-        value = EngineInfo.wireguardGoVersion(context)
-    }
 
     Column(
         modifier = modifier
@@ -55,47 +59,26 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onBackground,
             )
 
+            SettingsSection(stringResource(R.string.settings_section_connection)) {
+                LinkRow(
+                    title = stringResource(R.string.settings_notifications),
+                    summary = stringResource(R.string.settings_notifications_summary),
+                    onClick = { openNotificationSettings(context) },
+                )
+            }
+
             SettingsSection(stringResource(R.string.settings_section_app)) {
                 SettingsRow(stringResource(R.string.settings_app_version), BuildConfig.VERSION_NAME)
                 HorizontalDivider(color = ZuzuColors.NavyHigh)
                 SettingsRow(stringResource(R.string.settings_app_id), BuildConfig.APPLICATION_ID)
             }
 
-            SettingsSection(stringResource(R.string.settings_section_engine)) {
-                val versionText = when (val v = engineVersion) {
-                    null -> stringResource(R.string.settings_engine_loading)
-                    else -> v.fold(
-                        onSuccess = { it },
-                        onFailure = { stringResource(R.string.settings_engine_error, it.message ?: it.javaClass.simpleName) },
-                    )
-                }
-                SettingsRow(stringResource(R.string.settings_engine_version), versionText)
-                Text(
-                    stringResource(R.string.settings_engine_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = ZuzuColors.TextMuted,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                )
-            }
-
             SettingsSection(stringResource(R.string.settings_section_legal)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button, onClick = onOpenLicenses)
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_licenses), style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(R.string.settings_licenses_summary),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = ZuzuColors.TextSecondary)
-                }
+                LinkRow(
+                    title = stringResource(R.string.settings_licenses),
+                    summary = stringResource(R.string.settings_licenses_summary),
+                    onClick = onOpenLicenses,
+                )
             }
 
             Text(
@@ -103,8 +86,20 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = ZuzuColors.TextMuted,
             )
+
+            developerEntry?.invoke()
         }
     }
+}
+
+/** Opens Android's notification settings for this app (the ongoing VPN notification lives there). */
+private fun openNotificationSettings(context: Context) {
+    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    } else {
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+    }
+    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 @Composable
@@ -117,6 +112,27 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
         ) {
             Column { content() }
         }
+    }
+}
+
+@Composable
+private fun LinkRow(title: String, summary: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = ZuzuColors.TextSecondary)
     }
 }
 

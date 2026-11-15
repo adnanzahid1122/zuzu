@@ -1,4 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">Zuzu VPN (dev)</string>
+
+    <!-- Debug-only developer tools: test server setup and engine versions. Not in release builds. -->
+    <string name="settings_section_engine">VPN engine</string>
+    <string name="settings_engine_version">wireguard-go</string>
+    <string name="settings_engine_shadowsocks">shadowsocks-rust</string>
+    <string name="settings_engine_tun2socks">hev-socks5-tunnel</string>
+    <string name="settings_engine_loading">Loading…</string>
+    <string name="settings_engine_error">Native engine failed to load: %1$s</string>
+    <plurals name="ss_import_key_chain">
+        <item quantity="one">%1$d key (hidden)</item>
+        <item quantity="other">%1$d keys (hidden)</item>
+    </plurals>
+    <string name="servers_title">Test servers</string>
+    <string name="servers_add">Add server</string>
+    <string name="servers_import">Import ss:// link</string>
+    <string name="servers_empty_title">No test servers yet</string>
+    <string name="servers_empty_body">Add a Shadowsocks test server by entering its details or pasting an ss:// link. It then appears in Locations as a development location.</string>
+    <string name="servers_selected">Selected</string>
+    <string name="servers_select_cd">Use %1$s</string>
+    <string name="servers_edit_cd">Edit %1$s</string>
+    <string name="servers_storage_note">Servers are stored only on this device. Keys are encrypted with a key held in the Android Keystore.</string>
+    <string name="servers_active_note">You are connected. Changes take effect the next time you connect.</string>
+    <string name="ss_editor_add_title">Add server</string>
+    <string name="ss_editor_edit_title">Edit server</string>
+    <string name="ss_editor_name_hint">Optional · defaults to the server address</string>
+    <string name="ss_editor_cancel">Cancel</string>
+    <string name="ss_delete_title">Delete this server?</string>
+    <string name="ss_delete_body">Its settings and key are removed from this device.</string>
+    <string name="ss_import_title">Import ss:// link</string>
+    <string name="ss_import_parse">Check link</string>
+    <string name="ss_import_preview">Server found</string>
+    <string name="ss_import_edit">Edit before saving</string>
+    <string name="ss_import_key_single">%1$d-byte key (hidden)</string>
+    <string name="ss_import_udp_note">ss:// links do not say whether the server relays UDP, so it starts off. Turn it on only if your server allows UDP.</string>
+    <string name="ss_error_uri_missing">The link is missing the server address, port, cipher or key.</string>
+    <string name="ss_error_uri_port">The link has no valid port (1–65535).</string>
+    <string name="ss_error_load">This server could not be loaded.</string>
+    <string name="ss_editor_import_label">ss:// link</string>
+    <string name="ss_editor_import_hint">Paste an ss:// link to fill in the fields</string>
+    <string name="ss_editor_name">Name</string>
+    <string name="ss_editor_host">Server address</string>
+    <string name="ss_editor_port">Port</string>
+    <string name="ss_editor_method">Cipher</string>
+    <string name="ss_editor_key">Key (base64)</string>
+    <string name="ss_editor_key_hint">The server\'s pre-shared key: 16 bytes, base64-encoded</string>
+    <string name="ss_editor_password">Password</string>
+    <string name="ss_editor_password_hint">Exactly as in your server configuration</string>
+    <string name="ss_cipher_2022_summary">Recommended. Shadowsocks 2022 with replay protection; uses a base64 key.</string>
+    <string name="ss_cipher_classic_summary">Older Shadowsocks AEAD cipher used by many existing servers; uses a password. Prefer a 2022 cipher when your server supports it.</string>
+    <string name="ss_import_password_hidden">Password (hidden)</string>
+    <string name="ss_error_password_chars">The password contains a line break or other control character. Check that it was copied correctly.</string>
+    <string name="ss_editor_key_show">Show key</string>
+    <string name="ss_editor_key_hide">Hide key</string>
+    <string name="ss_editor_udp">UDP relay</string>
+    <string name="ss_editor_udp_summary">Relay UDP (calls, games, DNS) through the server. Turn on only if your server allows UDP. When off, UDP is blocked and DNS is resolved by the server over TCP.</string>
+    <string name="ss_editor_save">Save</string>
+    <string name="ss_editor_delete">Delete server</string>
+    <string name="ss_editor_storage_note">The key is stored encrypted with a key held in the Android Keystore and is never logged.</string>
+    <string name="ss_editor_reconnect_note">Changes apply the next time you connect.</string>
+    <string name="ss_error_host">Enter a valid host name or IP address.</string>
+    <string name="ss_error_port">Enter a port from 1 to 65535.</string>
+    <string name="ss_error_method">Supported ciphers: 2022-blake3-aes-128-gcm and chacha20-ietf-poly1305.</string>
+    <string name="ss_error_key_empty">Enter the key.</string>
+    <string name="ss_error_key_encoding">The key must be base64.</string>
+    <string name="ss_error_key_length">The key must decode to exactly 16 bytes for 2022-blake3-aes-128-gcm.</string>
+    <string name="ss_error_uri">This is not a valid ss:// link.</string>
+    <string name="ss_error_uri_plugin">Links that need a plugin (obfs, v2ray-plugin, …) are not supported.</string>
+    <string name="ss_error_save">The server could not be saved.</string>
+    <string name="ss_card_udp_on">UDP on</string>
+    <string name="ss_card_udp_off">TCP only</string>
+    <string name="dev_section">Developer</string>
+    <string name="dev_entry">Test servers &amp; engine</string>
+    <string name="dev_entry_summary">Debug build only. Configure internal test servers.</string>
+    <string name="dev_notice">Development build only. Test servers entered here are stored encrypted on this device, appear in Locations as development locations, and do not exist in release builds.</string>
 </resources>

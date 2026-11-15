@@ -1,68 +1,83 @@
 package com.example.zuzuvpn.ui.locations
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.zuzuvpn.data.DemoLocationRepository
-import com.example.zuzuvpn.ui.home.ServerLocation
+import com.example.zuzuvpn.ZuzuApplication
+import com.example.zuzuvpn.data.servers.CountryGroup
+import com.example.zuzuvpn.data.servers.ServerCatalog
+import com.example.zuzuvpn.data.servers.ServerDirectory
+import com.example.zuzuvpn.data.servers.ServerInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+enum class DirectoryStatus { Loading, NotConfigured, Available }
 
 data class LocationsUiState(
+    val status: DirectoryStatus = DirectoryStatus.Loading,
     val query: String = "",
-    val selectedId: String = "",
-    /** Shown only when [query] is blank. */
-    val recommended: List<ServerLocation> = emptyList(),
-    /** All locations, or the search results when [query] is not blank. */
-    val locations: List<ServerLocation> = emptyList(),
-    /** Always true in Phase 1: every entry is sample data. */
-    val isDemo: Boolean = true,
-)
+    val selectedId: String? = null,
+    /** Servers the source marks as recommended; shown only when [query] is blank. */
+    val recommended: List<ServerInfo> = emptyList(),
+    /** Countries with their servers, or the search results when [query] is not blank. */
+    val countries: List<CountryGroup> = emptyList(),
+    /** True when development test servers (debug builds) are listed. */
+    val hasDevelopment: Boolean = false,
+) {
+    companion object {
+        fun from(directory: ServerDirectory, query: String, selectedId: String?): LocationsUiState = when (directory) {
+            ServerDirectory.Loading -> LocationsUiState(DirectoryStatus.Loading, query, selectedId)
+            ServerDirectory.NotConfigured -> LocationsUiState(DirectoryStatus.NotConfigured, query, selectedId)
+            is ServerDirectory.Available -> {
+                val groups = ServerCatalog.groupByCountry(directory.servers)
+                LocationsUiState(
+                    status = DirectoryStatus.Available,
+                    query = query,
+                    selectedId = selectedId,
+                    recommended = if (query.isBlank()) groups.flatMap { g -> g.servers.filter { it.isRecommended } } else emptyList(),
+                    countries = ServerCatalog.search(groups, query),
+                    hasDevelopment = directory.servers.any { it.isDevelopment },
+                )
+            }
+        }
+    }
+}
 
-class LocationsViewModel : ViewModel() {
-
+class LocationsViewModel(application: Application) : AndroidViewModel(application) {
+    private val container = (application as ZuzuApplication).container
+    private val servers = container.servers
+    private val selection = container.serverSelection
     private val query = MutableStateFlow("")
 
     val state: StateFlow<LocationsUiState> =
-        combine(query, DemoLocationRepository.selected) { q, selected ->
-            buildState(q, selected.id)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = buildState("", DemoLocationRepository.selected.value.id),
-        )
+        combine(servers.directory, query, selection.selectedId, LocationsUiState::from)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = LocationsUiState.from(servers.directory.value, "", selection.selectedId.value),
+            )
+
+    init {
+        viewModelScope.launch { servers.refresh() }
+    }
 
     fun onQueryChange(value: String) {
         query.value = value
     }
 
-    fun onSelect(id: String) {
-        DemoLocationRepository.select(id)
+    /** Selects a specific server. */
+    fun onSelectServer(id: String) {
+        selection.select(id)
     }
 
-    private fun buildState(q: String, selectedId: String): LocationsUiState {
-        val all = DemoLocationRepository.locations
-        val trimmed = q.trim()
-        return if (trimmed.isEmpty()) {
-            LocationsUiState(
-                query = q,
-                selectedId = selectedId,
-                recommended = all.filter { it.isRecommended },
-                locations = all.sortedWith(compareBy({ it.countryName }, { it.cityName })),
-            )
-        } else {
-            LocationsUiState(
-                query = q,
-                selectedId = selectedId,
-                recommended = emptyList(),
-                locations = all.filter {
-                    it.countryName.contains(trimmed, ignoreCase = true) ||
-                        it.cityName.contains(trimmed, ignoreCase = true) ||
-                        it.countryCode.equals(trimmed, ignoreCase = true)
-                },
-            )
-        }
+    /** Selects the best available server in a country. Returns false if none is available. */
+    fun onSelectCountry(group: CountryGroup): Boolean {
+        val best = ServerCatalog.bestIn(group) ?: return false
+        selection.select(best.id)
+        return true
     }
 }

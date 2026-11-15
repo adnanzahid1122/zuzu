@@ -1,0 +1,30 @@
+[package]
+name = "zuzuss"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "JNI wrapper that runs the shadowsocks-rust local client (SOCKS5 inbound) inside the Zuzu VPN service process."
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# Client only: SOCKS5 inbound + AEAD / AEAD-2022 ciphers. No server, manager, HTTP, redir, tun,
+# hickory DNS or deprecated stream ciphers. The server address is resolved by the app before the
+# VPN comes up, so the library never needs its own DNS resolver.
+shadowsocks-service = { version = "=1.25.0", default-features = false, features = [
+    "local",
+    "aead-cipher",
+    "aead-cipher-2022",
+] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "sync", "macros"] }
+jni = { version = "0.21", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+# Unwinding is kept so the JNI boundary can catch panics (see catch_unwind in lib.rs).
+panic = "unwind"

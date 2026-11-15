@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "id": "test-xx-1",
+      "name": "Example",
+      "country": "France",
+      "countryCode": "FR",
+      "city": null,
+      "protocol": "shadowsocks",
+      "recommended": true,
+      "premium": false,
+      "shadowsocks": {
+        "server": "203.0.113.10",
+        "server_port": 443,
+        "local_port": 1080,
+        "password": "PASTE_TEST_SERVER_PASSWORD_HERE",
+        "method": "chacha20-ietf-poly1305",
+        "udp": false
+      }
+    }
+  ]
+}

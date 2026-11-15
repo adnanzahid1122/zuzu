@@ -23,29 +23,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.zuzuvpn.R
 import com.example.zuzuvpn.ui.home.ConnectionPhase
 import com.example.zuzuvpn.ui.theme.ZuzuColors
 
-/** Status dot + title + subtitle. Copy is explicitly "demo" while [isDemo] is true. */
+/**
+ * Status dot + title + subtitle. The caller supplies the text from the real VPN state; this
+ * component never claims a connection on its own.
+ *
+ * @param isError shows the subtitle in the warning colour (failed attempt, revoked tunnel).
+ */
 @Composable
 fun StatusIndicator(
     phase: ConnectionPhase,
-    isDemo: Boolean,
+    title: String,
+    subtitle: String?,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
     timerText: String? = null,
 ) {
     val dotColor by animateColorAsState(
-        targetValue = when (phase) {
-            ConnectionPhase.Disconnected -> ZuzuColors.TextMuted
-            ConnectionPhase.Connecting -> ZuzuColors.Cyan
-            ConnectionPhase.Connected -> ZuzuColors.Success
+        targetValue = when {
+            isError -> ZuzuColors.Warning
+            phase == ConnectionPhase.Disconnected -> ZuzuColors.TextMuted
+            phase == ConnectionPhase.Connecting -> ZuzuColors.Cyan
+            else -> ZuzuColors.Success
         },
         label = "dot",
     )
@@ -54,24 +60,6 @@ fun StatusIndicator(
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
         label = "blink",
-    )
-
-    // Phase 1 only ships demo copy. Real-status copy is added when the tunnel is wired up and
-    // a handshake has been verified; until then nothing claims the traffic is protected.
-    check(isDemo) { "Real tunnel status is not implemented in Phase 1" }
-    val title = stringResource(
-        when (phase) {
-            ConnectionPhase.Disconnected -> R.string.status_disconnected_title
-            ConnectionPhase.Connecting -> R.string.status_connecting_title
-            ConnectionPhase.Connected -> R.string.status_connected_title
-        },
-    )
-    val subtitle = stringResource(
-        when (phase) {
-            ConnectionPhase.Disconnected -> R.string.status_disconnected_subtitle
-            ConnectionPhase.Connecting -> R.string.status_connecting_subtitle
-            ConnectionPhase.Connected -> R.string.status_connected_subtitle
-        },
     )
 
     Column(
@@ -93,12 +81,14 @@ fun StatusIndicator(
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (phase == ConnectionPhase.Connected) ZuzuColors.Warning else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isError) ZuzuColors.Warning else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
         if (timerText != null) {
             Spacer(Modifier.height(2.dp))
             Text(

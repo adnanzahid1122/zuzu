@@ -7,72 +7,117 @@
     <!-- Navigation -->
     <string name="nav_home">Home</string>
     <string name="nav_locations">Locations</string>
-    <string name="nav_premium">Premium</string>
     <string name="nav_settings">Settings</string>
     <string name="action_back">Back</string>
-    <string name="action_premium">Premium</string>
 
     <!-- Demo mode: these states are UI previews only, not tunnel status -->
-    <string name="demo_badge">Demo mode</string>
-    <string name="demo_explainer">Preview build. The connect button only animates the interface; no VPN tunnel is created and your traffic is not protected.</string>
 
     <string name="status_disconnected_title">Not connected</string>
-    <string name="status_disconnected_subtitle">No VPN tunnel is running</string>
-    <string name="status_connecting_title">Connecting… (demo)</string>
-    <string name="status_connecting_subtitle">Animation preview only — no tunnel is being created</string>
-    <string name="status_connected_title">Connected (demo)</string>
-    <string name="status_connected_subtitle">UI preview — your traffic is NOT protected</string>
-    <string name="demo_session_timer">Demo timer %1$s</string>
+    <string name="status_disconnected_subtitle">Your traffic is not protected</string>
+    <string name="status_connecting_title">Connecting…</string>
+    <string name="status_disconnecting_title">Disconnecting…</string>
+    <string name="status_connected_title">Connected</string>
+    <string name="status_connected_subtitle">Traffic verified through %1$s</string>
+    <string name="status_failed_title">Connection failed</string>
+    <string name="session_timer">Session %1$s</string>
 
     <string name="connect_button_connect">Connect</string>
     <string name="connect_button_cancel">Cancel</string>
     <string name="connect_button_disconnect">Disconnect</string>
-    <string name="connect_button_cd_connect">Connect (demo)</string>
-    <string name="connect_button_cd_cancel">Cancel demo connection</string>
-    <string name="connect_button_cd_disconnect">Disconnect (demo)</string>
+    <string name="connect_button_cd_connect">Connect VPN</string>
+    <string name="connect_button_cd_cancel">Cancel connection</string>
+    <string name="connect_button_cd_disconnect">Disconnect VPN</string>
 
     <!-- Server card -->
-    <string name="server_card_label">Server location</string>
-    <string name="server_sample_tag">Sample</string>
+    <string name="server_card_label">Location</string>
     <string name="server_latency_unknown">Not measured</string>
     <string name="server_latency_unknown_short">— ms</string>
     <string name="server_latency_ms">%1$d ms</string>
     <string name="server_load_unknown">Load —</string>
     <string name="server_load_percent">Load %1$d%%</string>
-    <string name="server_card_cd">Server location %1$s, %2$s. Opens the locations tab.</string>
+    <string name="server_card_cd">Location: %1$s. Opens Locations.</string>
 
     <!-- Locations (sample data only) -->
     <string name="locations_title">Locations</string>
-    <string name="locations_demo_notice">Sample list for the interface preview. These are not live Zuzu servers: ping and availability are not measured.</string>
     <string name="locations_search_hint">Search country or city</string>
     <string name="locations_search_clear">Clear search</string>
     <string name="locations_section_recommended">Recommended</string>
     <string name="locations_section_all">All locations</string>
     <string name="locations_section_results">Results (%1$d)</string>
-    <string name="locations_empty">No sample locations match “%1$s”.</string>
-    <string name="locations_status_unchecked">Not checked</string>
+    <string name="locations_empty">No locations match “%1$s”.</string>
 
     <!-- Placeholders for later phases -->
-    <string name="placeholder_premium_title">Zuzu Premium</string>
-    <string name="placeholder_premium_body">Subscriptions are not implemented in this build. Nothing can be purchased.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_section_app">App</string>
-    <string name="settings_section_engine">VPN engine</string>
     <string name="settings_section_legal">Legal</string>
     <string name="settings_app_version">Version</string>
     <string name="settings_app_id">Application ID</string>
-    <string name="settings_engine_version">wireguard-go</string>
-    <string name="settings_engine_loading">Loading…</string>
-    <string name="settings_engine_error">Native engine failed to load: %1$s</string>
-    <string name="settings_engine_note">The WireGuard engine (:tunnel) is bundled but not yet wired to the connect button.</string>
     <string name="settings_licenses">Open-source licenses</string>
-    <string name="settings_licenses_summary">WireGuard, wireguard-go, Go, AndroidX and Kotlin notices</string>
+    <string name="settings_licenses_summary">WireGuard, wireguard-go, shadowsocks-rust, hev-socks5-tunnel, Rust crates, AndroidX and Kotlin notices</string>
     <string name="settings_account_note">Account, devices and subscriptions arrive in a later phase.</string>
     <string name="licenses_title">Open-source licenses</string>
     <string name="licenses_loading">Loading licenses…</string>
     <string name="licenses_error">Could not read license notices.</string>
+
+    <!-- VPN connection -->
+    <string name="vpn_step_preparing">Preparing…</string>
+    <string name="vpn_step_resolving">Looking up the server…</string>
+    <string name="vpn_step_engine">Starting the secure connection…</string>
+    <string name="vpn_step_tunnel">Creating the VPN tunnel…</string>
+    <string name="vpn_step_verifying">Checking that traffic gets through…</string>
+    <string name="vpn_error_permission">VPN permission was not granted.</string>
+    <string name="vpn_error_no_server">No connection configuration is available for this location.</string>
+    <string name="vpn_error_invalid_server">The configuration for this location is invalid. Choose another location.</string>
+    <string name="vpn_error_dns">Could not reach the server. Check your internet connection and try again.</string>
+    <string name="vpn_error_engine_start">The secure connection could not start.</string>
+    <string name="vpn_error_tunnel">Android could not create the VPN tunnel.</string>
+    <string name="vpn_error_traffic">The tunnel started, but no traffic got through. Try again or choose another location.</string>
+    <string name="vpn_error_engine_stopped">The connection stopped unexpectedly.</string>
+    <string name="vpn_error_revoked">Another VPN app took over, or VPN permission was revoked.</string>
+    <string name="vpn_error_unavailable">This protocol is not available yet.</string>
+    <string name="vpn_error_unknown">Something went wrong while connecting.</string>
+    <string name="vpn_error_clock_hint">Automatic date and time is off on this device. Turn it on in system settings: a secure connection needs an accurate clock.</string>
+    <string name="vpn_notification_channel">VPN status</string>
+    <string name="vpn_notification_connecting">Zuzu VPN is connecting</string>
+    <string name="vpn_notification_connected">Zuzu VPN is connected</string>
+    <string name="vpn_notification_connected_text">Connected to %1$s</string>
+    <string name="vpn_notification_disconnecting">Zuzu VPN is disconnecting</string>
+
+
+    <!-- Home: location card and notices -->
+    <string name="home_location_choose">Choose a location</string>
+    <string name="home_location_choose_summary">Pick a country or city to connect to</string>
+    <string name="home_location_choose_action">Choose</string>
+    <string name="home_location_change">Change</string>
+    <string name="home_locations_unavailable_title">Locations unavailable</string>
+    <string name="home_locations_unavailable_body">This build is not connected to Zuzu\'s server directory yet.</string>
+    <string name="vpn_error_no_location">Choose a location first.</string>
+    <string name="vpn_error_locations_unavailable">Zuzu server locations are not available in this build yet.</string>
+    <string name="vpn_error_location_not_ready">This location is not available for connection right now.</string>
+    <string name="location_development_tag">Development</string>
+    <string name="location_development_subtitle">Development test server</string>
+
+    <!-- Locations: directory states -->
+    <string name="locations_loading">Loading locations…</string>
+    <string name="locations_unavailable_title">Locations are not available yet</string>
+    <string name="locations_unavailable_body">This build is not connected to Zuzu\'s server directory, so there are no locations to choose from. Nothing is shown until real locations are available.</string>
+    <string name="locations_dev_notice">Debug build: only development test servers are listed. They are not Zuzu locations.</string>
+    <string name="locations_none">No locations are available right now.</string>
+    <string name="locations_none_debug">No development test servers yet. Add one in Settings → Developer.</string>
+
+    <!-- Settings -->
+    <string name="settings_section_connection">Connection</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_summary">Connection status notification</string>
+
+    <string name="server_unavailable">Unavailable</string>
+    <string name="server_premium_tag">Premium</string>
+    <plurals name="locations_server_count">
+        <item quantity="one">%1$d server</item>
+        <item quantity="other">%1$d servers</item>
+    </plurals>
 
     <string name="mascot_cd">Zuzu the rabbit</string>
 </resources>

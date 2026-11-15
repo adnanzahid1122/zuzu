@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Required: :tunnel's manifest declares only the VpnService; wireguard-go opens UDP sockets. -->
+    <!-- Required: the VPN engines open sockets to the VPN servers. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Connection check: find the VPN network and test traffic over it (normal permission). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- ZuzuVpnService runs in the foreground with an ongoing notification while a tunnel exists. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 13+: needed to show the ongoing VPN notification (requested at first connect). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".ZuzuApplication"
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
@@ -15,6 +23,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Zuzu.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -24,9 +33,28 @@
         </activity>
 
         <!--
-          No <service> declaration here on purpose:
-          com.wireguard.android.backend.GoBackend$VpnService (BIND_VPN_SERVICE, android.net.VpnService
-          intent filter) is merged in from tunnel/src/main/AndroidManifest.xml.
+          Zuzu's VPN service (Shadowsocks today; the common owner of the VPN interface).
+          specialUse: a user-initiated VPN tunnel that must keep running with the screen off.
+          The higher intent-filter priority makes the system's always-on VPN start this service
+          rather than the WireGuard GoBackend service merged in from :tunnel.
+        -->
+        <service
+            android:name=".vpn.ZuzuVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter android:priority="10">
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+        </service>
+
+        <!--
+          com.wireguard.android.backend.GoBackend$VpnService (BIND_VPN_SERVICE) is merged in from
+          tunnel/src/main/AndroidManifest.xml unchanged. It is not used until WireGuard is wired
+          into the common VpnController.
         -->
     </application>
 </manifest>

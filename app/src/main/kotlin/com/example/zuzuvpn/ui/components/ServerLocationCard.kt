@@ -35,24 +35,39 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zuzuvpn.R
-import com.example.zuzuvpn.ui.home.ServerLocation
+import com.example.zuzuvpn.data.servers.CountryCodes
+import com.example.zuzuvpn.data.servers.ServerDirectory
+import com.example.zuzuvpn.data.servers.ServerInfo
 import com.example.zuzuvpn.ui.theme.ZuzuColors
 
 /**
- * Tappable Home card for the selected server: flag, country, city, latency and load.
+ * Tappable Home card for the selected location: flag, country, city and (only when the directory
+ * supplied them) latency and load. With no location it prompts the user to choose one; when this
+ * build has no location source it says so instead of showing anything made up.
  *
- * Layout is width-aware so nothing wraps letter-by-letter on ~360dp phones:
- * country and city each stay on one line (ellipsized); latency and load sit on their own row,
- * switching to compact labels and dropping load when the text column gets narrow.
- * The chevron always keeps its space.
+ * Layout is width-aware so nothing wraps letter-by-letter on ~360dp phones.
  */
 @Composable
-fun ServerLocationCard(
-    server: ServerLocation,
+fun LocationCard(
+    location: ServerInfo?,
+    directory: ServerDirectory,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description = stringResource(R.string.server_card_cd, server.countryName, server.cityName)
+    val unavailable = directory == ServerDirectory.NotConfigured
+    val title = when {
+        location != null -> location.name
+        unavailable -> stringResource(R.string.home_locations_unavailable_title)
+        else -> stringResource(R.string.home_location_choose)
+    }
+    val subtitle = when {
+        location != null && !location.isAvailable -> stringResource(R.string.server_unavailable)
+        location?.isDevelopment == true -> listOfNotNull(location.city, stringResource(R.string.location_development_subtitle)).joinToString(" · ")
+        location != null -> location.city ?: location.country.takeIf { it != location.name }
+        unavailable -> stringResource(R.string.home_locations_unavailable_body)
+        else -> stringResource(R.string.home_location_choose_summary)
+    }
+    val description = stringResource(R.string.server_card_cd, title)
     Card(
         onClick = onClick,
         modifier = modifier
@@ -66,7 +81,7 @@ fun ServerLocationCard(
             modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FlagBadge(countryCode = server.countryCode, size = 42.dp)
+            LocationBadge(countryCode = location?.countryCode, size = 42.dp)
             Spacer(Modifier.width(12.dp))
             BoxWithConstraints(Modifier.weight(1f)) {
                 val textWidth = maxWidth
@@ -81,7 +96,7 @@ fun ServerLocationCard(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = server.countryName,
+                            text = title,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
@@ -89,33 +104,72 @@ fun ServerLocationCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false),
                         )
-                        if (server.isSample) {
+                        if (location?.isPremium == true) {
                             Spacer(Modifier.width(6.dp))
-                            SampleTag()
+                            PremiumTag()
+                        }
+                        if (location?.isDevelopment == true) {
+                            Spacer(Modifier.width(6.dp))
+                            DevelopmentTag()
                         }
                     }
-                    Text(
-                        text = server.cityName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    ServerMetricsRow(
-                        latencyMs = server.latencyMs,
-                        loadPercent = server.loadPercent,
-                        availableWidth = textWidth,
-                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (location != null && (location.latencyMs != null || location.loadPercent != null)) {
+                        Spacer(Modifier.height(6.dp))
+                        ServerMetricsRow(
+                            latencyMs = location.latencyMs,
+                            loadPercent = location.loadPercent,
+                            availableWidth = textWidth,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(4.dp))
+            if (!unavailable) {
+                Text(
+                    text = stringResource(if (location == null) R.string.home_location_choose_action else R.string.home_location_change),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ZuzuColors.ElectricBlueBright,
+                    maxLines = 1,
+                )
+            }
             Icon(
                 painter = painterResource(R.drawable.ic_chevron_right),
                 contentDescription = null,
                 tint = ZuzuColors.TextSecondary,
                 modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+/** Flag for a known country code; a neutral location pin when the country is unknown. */
+@Composable
+fun LocationBadge(countryCode: String?, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    if (countryCode != null) {
+        FlagBadge(countryCode = countryCode, modifier = modifier, size = size)
+    } else {
+        Box(
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(ZuzuColors.NavyHigh)
+                .border(1.dp, ZuzuColors.Outline, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_nav_locations),
+                contentDescription = null,
+                tint = ZuzuColors.TextSecondary,
+                modifier = Modifier.size(size * 0.5f),
             )
         }
     }
@@ -163,14 +217,8 @@ fun FlagBadge(
     }
 }
 
-/** Converts "US" to the regional-indicator flag emoji. Returns the code itself if invalid. */
-fun flagEmoji(countryCode: String): String {
-    val code = countryCode.uppercase()
-    if (code.length != 2 || code.any { it !in 'A'..'Z' }) return code
-    val first = Character.codePointAt(code, 0) - 'A'.code + 0x1F1E6
-    val second = Character.codePointAt(code, 1) - 'A'.code + 0x1F1E6
-    return String(Character.toChars(first)) + String(Character.toChars(second))
-}
+/** Regional-indicator flag emoji for an ISO 3166-1 alpha-2 code (derived, never stored). */
+fun flagEmoji(countryCode: String): String = CountryCodes.flagEmoji(countryCode)
 
 /**
  * Four signal bars coloured by latency. When [latencyMs] is null the bars are grey and the label
@@ -264,17 +312,32 @@ fun LoadIndicator(loadPercent: Int?, modifier: Modifier = Modifier) {
     }
 }
 
-/** Grey "Sample" chip marking demo data. */
+/** Gold "Premium" chip for servers that need a premium entitlement (entitlements are not implemented yet). */
 @Composable
-fun SampleTag(modifier: Modifier = Modifier) {
+fun PremiumTag(modifier: Modifier = Modifier) {
     Text(
-        text = stringResource(R.string.server_sample_tag),
+        text = stringResource(R.string.server_premium_tag),
         style = MaterialTheme.typography.labelSmall,
-        color = ZuzuColors.TextSecondary,
+        color = ZuzuColors.Gold,
         maxLines = 1,
         softWrap = false,
         modifier = modifier
-            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(6.dp))
+            .background(ZuzuColors.Gold.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    )
+}
+
+/** Amber "Development" chip marking debug-build test servers (never production locations). */
+@Composable
+fun DevelopmentTag(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.location_development_tag),
+        style = MaterialTheme.typography.labelSmall,
+        color = ZuzuColors.Warning,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+            .background(ZuzuColors.Warning.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 1.dp),
     )
 }

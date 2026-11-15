@@ -16,3 +16,10 @@ build/
 *.jks
 gradlew.bat
 maint/
+
+# Zuzu VPN native engine (Rust build output and caches)
+/native/zuzuss/target/
+/.kotlin/
+
+# Zuzu debug test-server configuration (contains credentials; never commit)
+/zuzu-dev/test-servers.json
