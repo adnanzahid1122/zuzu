@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Zuzu splash icon (static frame). 288dp canvas; all content stays inside the 192dp circle
+  the system splash screen shows. Electric-blue glow behind the placeholder rabbit mark.
+  Animated by @drawable/splash_mascot_animated.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path
+        android:name="glow"
+        android:pathData="M48,144a96,96 0 1,0 192,0a96,96 0 1,0 -192,0z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="144"
+                android:centerY="144"
+                android:gradientRadius="96">
+                <item android:offset="0" android:color="#A62F7BFF" />
+                <item android:offset="0.55" android:color="#4022D3EE" />
+                <item android:offset="1" android:color="#002F7BFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:name="ring"
+        android:strokeColor="#4D5B9BFF"
+        android:strokeWidth="1.5"
+        android:pathData="M60,144a84,84 0 1,0 168,0a84,84 0 1,0 -168,0z" />
+    <!-- 108-unit launcher mark scaled 2.4x and centred on (144,144) -->
+    <group
+        android:name="placement"
+        android:scaleX="2.4"
+        android:scaleY="2.4"
+        android:translateX="14.4"
+        android:translateY="19.2">
+        <group
+            android:name="bob"
+            android:pivotX="54"
+            android:pivotY="60">
+    <!-- Ears -->
+    <path android:fillColor="#FFF4F6FF" android:pathData="M40.5,37a5.5,14 0 1,0 11,0a5.5,14 0 1,0 -11,0z" />
+    <path android:fillColor="#FFF4F6FF" android:pathData="M56.5,37a5.5,14 0 1,0 11,0a5.5,14 0 1,0 -11,0z" />
+    <path android:fillColor="#FFFFB3C7" android:pathData="M43.5,38a2.5,9.5 0 1,0 5,0a2.5,9.5 0 1,0 -5,0z" />
+    <path android:fillColor="#FFFFB3C7" android:pathData="M59.5,38a2.5,9.5 0 1,0 5,0a2.5,9.5 0 1,0 -5,0z" />
+    <!-- Head -->
+    <path android:fillColor="#FFF4F6FF" android:pathData="M35,61a19,18 0 1,0 38,0a19,18 0 1,0 -38,0z" />
+    <!-- Eyes, nose -->
+    <path android:fillColor="#FF141B3A" android:pathData="M44.2,59a2.8,3.2 0 1,0 5.6,0a2.8,3.2 0 1,0 -5.6,0z" />
+    <path android:fillColor="#FF141B3A" android:pathData="M58.2,59a2.8,3.2 0 1,0 5.6,0a2.8,3.2 0 1,0 -5.6,0z" />
+    <path android:fillColor="#FFFF8FAB" android:pathData="M52.2,65.5a1.8,1.4 0 1,0 3.6,0a1.8,1.4 0 1,0 -3.6,0z" />
+    <!-- Electric-blue scarf with Z mark -->
+    <path android:fillColor="#FF2F7BFF" android:pathData="M41,75h26a3,3 0 0,1 0,6h-26a3,3 0 0,1 0,-6z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.2" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M52.3,76.6h3.4l-3.4,2.8h3.4" />
+        </group>
+    </group>
+</vector>

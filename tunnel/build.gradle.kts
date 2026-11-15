@@ -4,6 +4,9 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.api.tasks.bundling.Zip
 
 val pkg: String = providers.gradleProperty("wireguardPackageName").get()
+// Package name of the application that loads the native libraries. It is compiled into libwg-go.so
+// (UAPI socket directory /data/data/<package>/cache/wireguard). Falls back to the upstream name.
+val nativePkg: String = providers.gradleProperty("appPackageName").orElse(pkg).get()
 
 plugins {
     alias(libs.plugins.android.library)
@@ -42,14 +45,14 @@ android {
         release {
             externalNativeBuild {
                 cmake {
-                    arguments("-DANDROID_PACKAGE_NAME=${pkg}")
+                    arguments("-DANDROID_PACKAGE_NAME=${nativePkg}")
                 }
             }
         }
         debug {
             externalNativeBuild {
                 cmake {
-                    arguments("-DANDROID_PACKAGE_NAME=${pkg}.debug")
+                    arguments("-DANDROID_PACKAGE_NAME=${nativePkg}.debug")
                 }
             }
         }

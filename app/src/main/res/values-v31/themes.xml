@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: same launch theme plus the ZUZU VPN wordmark in the branding slot. -->
+    <style name="Theme.Zuzu.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/zuzu_midnight</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mascot_animated</item>
+        <item name="windowSplashScreenAnimationDuration">700</item>
+        <item name="postSplashScreenTheme">@style/Theme.Zuzu</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_wordmark</item>
+    </style>
+</resources>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "ZUZU VPN" wordmark for the splash branding slot (200x80dp, Android 12+).
+  Vector drawables cannot render fonts, so the letters are drawn as geometric strokes that
+  follow the in-app wordmark: white heavy ZUZU, electric-blue VPN.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="80dp"
+    android:viewportWidth="200"
+    android:viewportHeight="80">
+    <!-- ZUZU -->
+    <path
+        android:strokeColor="#FFEAF0FF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M21,28H39L21,52H39 M45,28V43A9,9 0 0,0 63,43V28 M69,28H87L69,52H87 M93,28V43A9,9 0 0,0 111,43V28" />
+    <!-- VPN -->
+    <path
+        android:strokeColor="#FF5B9BFF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M121,28L129,52L137,28 M142,52V28H150A6.5,6.5 0 0,1 150,41H142 M162,52V28L178,52V28" />
+</vector>

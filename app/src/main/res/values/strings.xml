@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Zuzu VPN</string>
+    <string name="brand_wordmark" translatable="false">ZUZU</string>
+    <string name="brand_suffix" translatable="false">VPN</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_locations">Locations</string>
+    <string name="nav_premium">Premium</string>
+    <string name="nav_settings">Settings</string>
+    <string name="action_back">Back</string>
+    <string name="action_premium">Premium</string>
+
+    <!-- Demo mode: these states are UI previews only, not tunnel status -->
+    <string name="demo_badge">Demo mode</string>
+    <string name="demo_explainer">Preview build. The connect button only animates the interface; no VPN tunnel is created and your traffic is not protected.</string>
+
+    <string name="status_disconnected_title">Not connected</string>
+    <string name="status_disconnected_subtitle">No VPN tunnel is running</string>
+    <string name="status_connecting_title">Connecting… (demo)</string>
+    <string name="status_connecting_subtitle">Animation preview only — no tunnel is being created</string>
+    <string name="status_connected_title">Connected (demo)</string>
+    <string name="status_connected_subtitle">UI preview — your traffic is NOT protected</string>
+    <string name="demo_session_timer">Demo timer %1$s</string>
+
+    <string name="connect_button_connect">Connect</string>
+    <string name="connect_button_cancel">Cancel</string>
+    <string name="connect_button_disconnect">Disconnect</string>
+    <string name="connect_button_cd_connect">Connect (demo)</string>
+    <string name="connect_button_cd_cancel">Cancel demo connection</string>
+    <string name="connect_button_cd_disconnect">Disconnect (demo)</string>
+
+    <!-- Server card -->
+    <string name="server_card_label">Server location</string>
+    <string name="server_sample_tag">Sample</string>
+    <string name="server_latency_unknown">Not measured</string>
+    <string name="server_latency_unknown_short">— ms</string>
+    <string name="server_latency_ms">%1$d ms</string>
+    <string name="server_load_unknown">Load —</string>
+    <string name="server_load_percent">Load %1$d%%</string>
+    <string name="server_card_cd">Server location %1$s, %2$s. Opens the locations tab.</string>
+
+    <!-- Locations (sample data only) -->
+    <string name="locations_title">Locations</string>
+    <string name="locations_demo_notice">Sample list for the interface preview. These are not live Zuzu servers: ping and availability are not measured.</string>
+    <string name="locations_search_hint">Search country or city</string>
+    <string name="locations_search_clear">Clear search</string>
+    <string name="locations_section_recommended">Recommended</string>
+    <string name="locations_section_all">All locations</string>
+    <string name="locations_section_results">Results (%1$d)</string>
+    <string name="locations_empty">No sample locations match “%1$s”.</string>
+    <string name="locations_status_unchecked">Not checked</string>
+
+    <!-- Placeholders for later phases -->
+    <string name="placeholder_premium_title">Zuzu Premium</string>
+    <string name="placeholder_premium_body">Subscriptions are not implemented in this build. Nothing can be purchased.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_section_engine">VPN engine</string>
+    <string name="settings_section_legal">Legal</string>
+    <string name="settings_app_version">Version</string>
+    <string name="settings_app_id">Application ID</string>
+    <string name="settings_engine_version">wireguard-go</string>
+    <string name="settings_engine_loading">Loading…</string>
+    <string name="settings_engine_error">Native engine failed to load: %1$s</string>
+    <string name="settings_engine_note">The WireGuard engine (:tunnel) is bundled but not yet wired to the connect button.</string>
+    <string name="settings_licenses">Open-source licenses</string>
+    <string name="settings_licenses_summary">WireGuard, wireguard-go, Go, AndroidX and Kotlin notices</string>
+    <string name="settings_account_note">Account, devices and subscriptions arrive in a later phase.</string>
+    <string name="licenses_title">Open-source licenses</string>
+    <string name="licenses_loading">Loading licenses…</string>
+    <string name="licenses_error">Could not read license notices.</string>
+
+    <string name="mascot_cd">Zuzu the rabbit</string>
+</resources>
