@@ -95,6 +95,8 @@
     <string name="home_locations_unavailable_body">This build is not connected to Zuzu\'s server directory yet.</string>
     <string name="vpn_error_no_location">Choose a location first.</string>
     <string name="vpn_error_locations_unavailable">Zuzu server locations are not available in this build yet.</string>
+    <string name="vpn_error_directory_unreachable">Couldn\'t load Zuzu locations. Check your connection and try again.</string>
+    <string name="home_locations_unreachable_body">Couldn\'t reach Zuzu\'s server directory. Tap to retry.</string>
     <string name="vpn_error_location_not_ready">This location is not available for connection right now.</string>
     <string name="location_development_tag">Development</string>
     <string name="location_development_subtitle">Development test server</string>
@@ -103,9 +105,16 @@
     <string name="locations_loading">Loading locations…</string>
     <string name="locations_unavailable_title">Locations are not available yet</string>
     <string name="locations_unavailable_body">This build is not connected to Zuzu\'s server directory, so there are no locations to choose from. Nothing is shown until real locations are available.</string>
-    <string name="locations_dev_notice">Debug build: only development test servers are listed. They are not Zuzu locations.</string>
+    <string name="locations_dev_notice">Debug build: servers labelled Development are local test servers, not Zuzu locations.</string>
     <string name="locations_none">No locations are available right now.</string>
-    <string name="locations_none_debug">No development test servers yet. Add one in Settings → Developer.</string>
+    <string name="locations_none_debug">No locations from Zuzu\'s server directory and no development test servers. Add one in Settings → Developer.</string>
+    <string name="locations_error_title">Couldn\'t load locations</string>
+    <string name="locations_error_network">Zuzu\'s server directory can\'t be reached. Check your internet connection and try again.</string>
+    <string name="locations_error_rate_limited">Too many requests right now. Please try again in a moment.</string>
+    <string name="locations_error_server">Zuzu\'s server directory is having a problem. Please try again later.</string>
+    <string name="locations_error_generic">Locations couldn\'t be loaded right now. Please try again later.</string>
+    <string name="locations_refresh_failed">Couldn\'t refresh locations. Showing the last list.</string>
+    <string name="locations_retry">Retry</string>
 
     <!-- Settings -->
     <string name="settings_section_connection">Connection</string>

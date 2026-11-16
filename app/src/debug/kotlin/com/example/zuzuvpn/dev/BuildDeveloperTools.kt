@@ -34,7 +34,7 @@ fun createDeveloperTools(context: Context, container: AppContainer): DeveloperTo
         }
     }
     return object : DeveloperTools {
-        override val dataSource: ServerDataSource = dataSource
+        override val localDataSource: ServerDataSource = dataSource
         override val ui: DeveloperUi = DebugDeveloperUi
     }
 }

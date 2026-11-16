@@ -60,6 +60,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             ConnectAction.Disconnect -> controller.disconnect()
             ConnectAction.Ignore -> Unit
             ConnectAction.LocationsUnavailable -> showNotice(HomeNotice.LocationsUnavailable)
+            ConnectAction.DirectoryUnavailable -> {
+                showNotice(HomeNotice.DirectoryUnreachable)
+                viewModelScope.launch { servers.refresh() }
+            }
             ConnectAction.NoLocation -> showNotice(HomeNotice.NoLocation)
             ConnectAction.ServerUnavailable -> showNotice(HomeNotice.LocationNotReady)
             is ConnectAction.Connect -> viewModelScope.launch {

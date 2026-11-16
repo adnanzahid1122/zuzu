@@ -29,6 +29,8 @@ data class ServerInfo(
     val isPremium: Boolean = false,
     /** Debug-build test server; labelled "Development" in the UI. Never true for production data. */
     val isDevelopment: Boolean = false,
+    /** Ordering hint from the source (higher first within a country); 0 when the source has none. */
+    val priority: Int = 0,
 ) {
     init {
         require(countryCode == null || CountryCodes.isValid(countryCode)) { "countryCode must be ISO 3166-1 alpha-2" }

@@ -8,14 +8,15 @@ import com.example.zuzuvpn.data.servers.ServerDataSource
  *  * src/debug: a local data source over the encrypted store, seeded on first launch from the
  *    build-time test-server configuration (zuzu-dev/test-servers.json, untracked), plus internal
  *    screens reached from Settings → Developer;
- *  * src/release: no data source yet (the backend API will provide one) and no internal screens.
+ *  * src/release: no local data source and no internal screens (servers come only from the
+ *    Control Plane API, see AppContainer).
  *
  * The release build therefore contains neither the test credentials, the seeding code, the
  * manual server editor nor ss:// import.
  */
 interface DeveloperTools {
-    /** Server source for this build. */
-    val dataSource: ServerDataSource
+    /** Local test-server source (debug builds), shown alongside the Control Plane directory; null in release. */
+    val localDataSource: ServerDataSource?
 
     /** Internal UI, or null when the build has none (release). */
     val ui: DeveloperUi?

@@ -12,6 +12,11 @@ import javax.crypto.spec.SecretKeySpec
 
 val appPkg: String = providers.gradleProperty("appPackageName").get()
 
+// Zuzu Control Plane (public server directory). Origin only: the client appends /api/v1 itself.
+// Override with -PzuzuApiBaseUrl=https://… (e.g. a staging API); it must be HTTPS.
+val apiBaseUrl: String = providers.gradleProperty("zuzuApiBaseUrl").orElse("https://api.gorabbit.net").get().trimEnd('/')
+require(apiBaseUrl.startsWith("https://")) { "zuzuApiBaseUrl must use HTTPS" }
+
 plugins {
     alias(libs.plugins.android.application) // AGP 9.1.0 — built-in Kotlin compiles src/main/kotlin
     alias(libs.plugins.kotlin.compose)      // Compose compiler; version = KGP used by AGP (2.2.10)
@@ -30,6 +35,8 @@ android {
         targetSdk = 36           // explicit (Google Play requires API 36 from 31 Aug 2026)
         versionCode = providers.gradleProperty("appVersionCode").get().toInt()
         versionName = providers.gradleProperty("appVersionName").get()
+
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         ndk {
             // The Shadowsocks engine (:shadowsocks, native/versions.properties ABIS) is currently built

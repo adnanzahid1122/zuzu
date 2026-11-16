@@ -233,6 +233,7 @@ private fun statusText(state: HomeUiState): StatusText = when (val vpn = state.v
 @StringRes
 private fun noticeText(notice: HomeNotice): Int = when (notice) {
     HomeNotice.LocationsUnavailable -> R.string.vpn_error_locations_unavailable
+    HomeNotice.DirectoryUnreachable -> R.string.vpn_error_directory_unreachable
     HomeNotice.NoLocation -> R.string.vpn_error_no_location
     HomeNotice.LocationNotReady -> R.string.vpn_error_location_not_ready
     HomeNotice.PermissionDenied -> R.string.vpn_error_permission

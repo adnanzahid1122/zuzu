@@ -24,7 +24,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -57,6 +60,7 @@ import com.example.zuzuvpn.ui.components.RabbitMascot
 import com.example.zuzuvpn.ui.components.LatencyIndicator
 import com.example.zuzuvpn.BuildConfig
 import com.example.zuzuvpn.data.servers.CountryGroup
+import com.example.zuzuvpn.data.servers.DirectoryError
 import com.example.zuzuvpn.data.servers.ServerDirectory
 import com.example.zuzuvpn.data.servers.ServerInfo
 import com.example.zuzuvpn.ui.components.PremiumTag
@@ -75,6 +79,7 @@ fun LocationsRoute(
     LocationsScreen(
         state = state,
         onQueryChange = viewModel::onQueryChange,
+        onRefresh = viewModel::onRefresh,
         onSelectServer = { id ->
             viewModel.onSelectServer(id)
             onLocationChosen()
@@ -92,6 +97,7 @@ fun LocationsRoute(
  * country picks its best available server; countries with several servers also list each one.
  * Never shows addresses, ports, ciphers or credentials, and never invents data.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationsScreen(
     state: LocationsUiState,
@@ -99,111 +105,125 @@ fun LocationsScreen(
     onSelectServer: (String) -> Unit,
     onSelectCountry: (CountryGroup) -> Unit,
     modifier: Modifier = Modifier,
+    onRefresh: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
-    BoxWithConstraints(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        val narrow = maxWidth < 340.dp
-        val sidePadding = if (maxWidth < 360.dp) 12.dp else 16.dp
-        LazyColumn(
-            modifier = Modifier
-                .widthIn(max = 640.dp)
-                .fillMaxSize()
-                .imePadding(),
-            contentPadding = PaddingValues(start = sidePadding, end = sidePadding, top = 12.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item(key = "header") {
-                Text(
-                    text = stringResource(R.string.locations_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            when (state.status) {
-                DirectoryStatus.Loading -> {
-                    item(key = "loading") { CenteredNote(stringResource(R.string.locations_loading)) }
-                    return@LazyColumn
-                }
-                DirectoryStatus.NotConfigured -> {
-                    item(key = "unavailable") { UnavailableState() }
-                    return@LazyColumn
-                }
-                DirectoryStatus.Available -> Unit
-            }
-            if (state.hasDevelopment) {
-                item(key = "dev-note") { DevelopmentNotice() }
-            }
-            item(key = "search") {
-                LocationSearchField(
-                    query = state.query,
-                    onQueryChange = onQueryChange,
-                    onDone = { focusManager.clearFocus() },
-                )
-            }
-
-            if (state.recommended.isNotEmpty()) {
-                item(key = "h-recommended") { SectionHeader(stringResource(R.string.locations_section_recommended)) }
-                items(state.recommended, key = { "rec-" + it.id }) { server ->
-                    LocationRow(
-                        countryCode = server.countryCode,
-                        title = server.name,
-                        subtitle = server.city ?: server.country.takeIf { it != server.name },
-                        server = server,
-                        selected = server.id == state.selectedId,
-                        narrow = narrow,
-                        onClick = { onSelectServer(server.id) },
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val narrow = maxWidth < 340.dp
+            val sidePadding = if (maxWidth < 360.dp) 12.dp else 16.dp
+            LazyColumn(
+                modifier = Modifier
+                    .widthIn(max = 640.dp)
+                    .fillMaxSize()
+                    .imePadding(),
+                contentPadding = PaddingValues(start = sidePadding, end = sidePadding, top = 12.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "header") {
+                    Text(
+                        text = stringResource(R.string.locations_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
-            }
-
-            item(key = "h-all") {
-                SectionHeader(
-                    if (state.query.isBlank()) stringResource(R.string.locations_section_all)
-                    else stringResource(R.string.locations_section_results, state.countries.size),
-                )
-            }
-            if (state.countries.isEmpty()) {
-                item(key = "empty") {
-                    CenteredNote(
-                        when {
-                            state.query.isNotBlank() -> stringResource(R.string.locations_empty, state.query.trim())
-                            BuildConfig.DEBUG -> stringResource(R.string.locations_none_debug)
-                            else -> stringResource(R.string.locations_none)
-                        },
+                when (state.status) {
+                    DirectoryStatus.Loading -> {
+                        item(key = "loading") { CenteredNote(stringResource(R.string.locations_loading)) }
+                        return@LazyColumn
+                    }
+                    DirectoryStatus.NotConfigured -> {
+                        item(key = "unavailable") { UnavailableState() }
+                        return@LazyColumn
+                    }
+                    DirectoryStatus.Failed -> {
+                        item(key = "failed") { FailedState(state.error, retrying = state.isRefreshing, onRetry = onRefresh) }
+                        return@LazyColumn
+                    }
+                    DirectoryStatus.Available -> Unit
+                }
+                if (state.error != null) {
+                    item(key = "refresh-failed") { RefreshFailedBanner(retrying = state.isRefreshing, onRetry = onRefresh) }
+                }
+                if (state.hasDevelopment) {
+                    item(key = "dev-note") { DevelopmentNotice() }
+                }
+                item(key = "search") {
+                    LocationSearchField(
+                        query = state.query,
+                        onQueryChange = onQueryChange,
+                        onDone = { focusManager.clearFocus() },
                     )
                 }
-            } else {
-                state.countries.forEach { group ->
-                    val single = group.servers.singleOrNull()
-                    item(key = "c-" + group.key) {
+
+                if (state.recommended.isNotEmpty()) {
+                    item(key = "h-recommended") { SectionHeader(stringResource(R.string.locations_section_recommended)) }
+                    items(state.recommended, key = { "rec-" + it.id }) { server ->
                         LocationRow(
-                            countryCode = group.countryCode,
-                            title = group.country,
-                            subtitle = when {
-                                single != null -> single.city
-                                else -> pluralStringResource(R.plurals.locations_server_count, group.servers.size, group.servers.size)
-                            },
-                            server = single,
-                            selected = group.servers.any { it.id == state.selectedId },
+                            countryCode = server.countryCode,
+                            title = server.name,
+                            subtitle = server.city ?: server.country.takeIf { it != server.name },
+                            server = server,
+                            selected = server.id == state.selectedId,
                             narrow = narrow,
-                            onClick = { onSelectCountry(group) },
-                            isDevelopment = group.isDevelopment,
-                            enabled = group.availableCount > 0,
+                            onClick = { onSelectServer(server.id) },
                         )
                     }
-                    if (single == null) {
-                        items(group.servers, key = { "s-" + it.id }) { server ->
+                }
+
+                item(key = "h-all") {
+                    SectionHeader(
+                        if (state.query.isBlank()) stringResource(R.string.locations_section_all)
+                        else stringResource(R.string.locations_section_results, state.countries.size),
+                    )
+                }
+                if (state.countries.isEmpty()) {
+                    item(key = "empty") {
+                        CenteredNote(
+                            when {
+                                state.query.isNotBlank() -> stringResource(R.string.locations_empty, state.query.trim())
+                                BuildConfig.DEBUG -> stringResource(R.string.locations_none_debug)
+                                else -> stringResource(R.string.locations_none)
+                            },
+                        )
+                    }
+                } else {
+                    state.countries.forEach { group ->
+                        val single = group.servers.singleOrNull()
+                        item(key = "c-" + group.key) {
                             LocationRow(
-                                countryCode = null,
-                                title = server.city ?: server.name,
-                                subtitle = server.name.takeIf { server.city != null && it != group.country },
-                                server = server,
-                                selected = server.id == state.selectedId,
+                                countryCode = group.countryCode,
+                                title = group.country,
+                                subtitle = when {
+                                    single != null -> single.city
+                                    else -> pluralStringResource(R.plurals.locations_server_count, group.servers.size, group.servers.size)
+                                },
+                                server = single,
+                                selected = group.servers.any { it.id == state.selectedId },
                                 narrow = narrow,
-                                onClick = { onSelectServer(server.id) },
-                                indent = true,
-                                enabled = server.isAvailable,
+                                onClick = { onSelectCountry(group) },
+                                isDevelopment = group.isDevelopment,
+                                enabled = group.availableCount > 0,
                             )
+                        }
+                        if (single == null) {
+                            items(group.servers, key = { "s-" + it.id }) { server ->
+                                LocationRow(
+                                    countryCode = null,
+                                    title = server.city ?: server.name,
+                                    subtitle = server.name.takeIf { server.city != null && it != group.country },
+                                    server = server,
+                                    selected = server.id == state.selectedId,
+                                    narrow = narrow,
+                                    onClick = { onSelectServer(server.id) },
+                                    indent = true,
+                                    enabled = server.isAvailable,
+                                )
+                            }
                         }
                     }
                 }
@@ -212,7 +232,65 @@ fun LocationsScreen(
     }
 }
 
-/** Deliberate state for builds without a location source (the backend is not implemented yet). */
+@androidx.annotation.StringRes
+private fun errorMessage(error: DirectoryError?): Int = when (error) {
+    DirectoryError.Network -> R.string.locations_error_network
+    DirectoryError.RateLimited -> R.string.locations_error_rate_limited
+    DirectoryError.Server -> R.string.locations_error_server
+    is DirectoryError.Http, DirectoryError.InvalidResponse, null -> R.string.locations_error_generic
+}
+
+/** The directory could not be loaded and there is nothing to show yet. Never shows fallback data. */
+@Composable
+private fun FailedState(error: DirectoryError?, retrying: Boolean, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        RabbitMascot(mood = MascotMood.Sleepy, modifier = Modifier.size(140.dp))
+        Text(
+            stringResource(R.string.locations_error_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            stringResource(errorMessage(error)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        OutlinedButton(onClick = onRetry, enabled = !retrying, border = BorderStroke(1.dp, ZuzuColors.ElectricBlue)) {
+            Text(stringResource(R.string.locations_retry), color = ZuzuColors.ElectricBlueBright)
+        }
+    }
+}
+
+/** The latest refresh failed; the list below is the last one that loaded. */
+@Composable
+private fun RefreshFailedBanner(retrying: Boolean, onRetry: () -> Unit) {
+    Surface(
+        color = ZuzuColors.Warning.copy(alpha = 0.08f),
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, ZuzuColors.Warning.copy(alpha = 0.3f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.locations_refresh_failed),
+                style = MaterialTheme.typography.bodySmall,
+                color = ZuzuColors.TextSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            androidx.compose.material3.TextButton(onClick = onRetry, enabled = !retrying) {
+                Text(stringResource(R.string.locations_retry), color = ZuzuColors.ElectricBlueBright)
+            }
+        }
+    }
+}
+
+/** Deliberate state for builds without a location source. */
 @Composable
 private fun UnavailableState() {
     Column(

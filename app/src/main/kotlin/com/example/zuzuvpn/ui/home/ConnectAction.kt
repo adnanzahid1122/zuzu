@@ -12,6 +12,9 @@ sealed interface ConnectAction {
     /** No server source in this build: explain it, never start the service. */
     data object LocationsUnavailable : ConnectAction
 
+    /** The server directory could not be loaded (and no earlier list exists). */
+    data object DirectoryUnavailable : ConnectAction
+
     /** Servers exist but none is selected (or the selection disappeared). */
     data object NoLocation : ConnectAction
 
@@ -28,6 +31,7 @@ sealed interface ConnectAction {
             VpnState.Disconnected, is VpnState.Failed -> when (directory) {
                 ServerDirectory.Loading -> Ignore
                 ServerDirectory.NotConfigured -> LocationsUnavailable
+                is ServerDirectory.Failed -> DirectoryUnavailable
                 is ServerDirectory.Available -> when {
                     selected == null -> NoLocation
                     !selected.isAvailable -> ServerUnavailable

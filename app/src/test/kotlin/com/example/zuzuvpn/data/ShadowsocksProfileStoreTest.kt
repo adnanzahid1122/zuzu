@@ -1,5 +1,9 @@
 package com.example.zuzuvpn.data
 
+import com.example.zuzuvpn.data.servers.ConnectionConfig
+import com.example.zuzuvpn.data.servers.ServerEntry
+import com.example.zuzuvpn.data.servers.ServerInfo
+import com.example.zuzuvpn.vpn.VpnProtocol
 import com.zuzuvpn.shadowsocks.ShadowsocksProfile
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -42,8 +46,17 @@ class ShadowsocksProfileStoreTest {
     private fun profile(name: String = "Home server", host: String = "vpn.example.com") =
         ShadowsocksProfile(name = name, host = host, port = 8388, password = key)
 
+    private fun entry(id: String, p: ShadowsocksProfile = profile(), countryCode: String? = "DE") = ServerEntry(
+        ServerInfo(id = id, name = p.name, country = "Germany", countryCode = countryCode, city = "Frankfurt", protocol = VpnProtocol.Shadowsocks),
+        ConnectionConfig.Shadowsocks(p),
+    )
+
+    private fun ShadowsocksProfileStore.profileOf(id: String): ShadowsocksProfile? = runBlocking {
+        (load(id)?.config as? ConnectionConfig.Shadowsocks)?.profile
+    }
+
     private fun store(b: SecretBox = box, legacy: File? = null, decoder: ((ByteArray) -> ShadowsocksProfile)? = null) =
-        ShadowsocksProfileStore(file, b, legacy, decoder, newId = { "id-${++ids}" })
+        ShadowsocksProfileStore(file, b, legacy, decoder, idGenerator = { "id-${++ids}" })
 
     @Before fun setUp() {
         dir = Files.createTempDirectory("zuzu-store").toFile()
@@ -56,57 +69,62 @@ class ShadowsocksProfileStoreTest {
     }
 
     @Test fun savedServerPersistsAcrossInstances() = runBlocking {
-        val id = store().save(null, profile())
+        store().save(entry("a"))
         val reopened = store()
-        assertEquals(profile(), reopened.load(id))
+        assertEquals(entry("a"), reopened.load("a"))
         reopened.refresh()
+        assertTrue(reopened.state.value.loaded)
         assertEquals(listOf("Home server"), reopened.state.value.servers.map { it.name })
-        assertEquals(id, reopened.state.value.selectedId)
     }
 
     @Test fun fileContainsNoPlaintextSecretsOrNames() = runBlocking {
-        store().save(null, profile(name = "VisibleName", host = "plain.example.net"))
+        store().save(entry("a", profile(name = "VisibleName", host = "plain.example.net")))
         val raw = String(file.readBytes(), Charsets.ISO_8859_1)
         assertFalse(raw.contains(key))
         assertFalse(raw.contains("VisibleName"))
         assertFalse(raw.contains("plain.example.net"))
     }
 
-    @Test fun firstServerIsSelectedAndSelectionPersists() = runBlocking {
+    @Test fun observableStateCarriesPublicInfoOnly() = runBlocking {
         val s = store()
-        val a = s.save(null, profile(name = "A"))
-        val b = s.save(null, profile(name = "B"), select = false)
-        assertEquals(a, s.state.value.selectedId)
-        s.select(b)
-        val reopened = store().also { it.refresh() }
-        assertEquals(b, reopened.state.value.selectedId)
-        assertEquals("B", reopened.state.value.selected?.name)
+        s.save(entry("a"))
+        val info = s.state.value.servers.single()
+        assertEquals(ServerInfo("a", "Home server", "Germany", "DE", "Frankfurt", VpnProtocol.Shadowsocks), info)
+        assertFalse(s.state.value.toString().contains(key))
+        assertFalse(s.state.value.toString().contains("vpn.example.com"))
     }
 
     @Test fun editingReplacesInPlace() = runBlocking {
         val s = store()
-        val id = s.save(null, profile(name = "Old"))
-        s.save(id, profile(name = "New").copy(udpEnabled = false))
+        s.save(entry("a", profile(name = "Old")))
+        s.save(entry("a", profile(name = "New").copy(udpEnabled = false)))
         assertEquals(1, s.state.value.servers.size)
-        assertEquals("New", s.load(id)?.name)
-        assertEquals(false, s.load(id)?.udpEnabled)
+        assertEquals("New", s.profileOf("a")?.name)
+        assertEquals(false, s.profileOf("a")?.udpEnabled)
     }
 
-    @Test fun deletingRemovesServerAndMovesSelection() = runBlocking {
+    @Test fun addMissingNeverReplacesExistingEntries() = runBlocking {
         val s = store()
-        val a = s.save(null, profile(name = "A"))
-        val b = s.save(null, profile(name = "B"), select = false)
-        s.delete(a)
-        assertNull(s.load(a))
-        assertEquals(b, s.state.value.selectedId)
-        s.delete(b)
+        s.save(entry("a", profile(name = "Mine")))
+        val added = s.addMissing(listOf(entry("a", profile(name = "Seed")), entry("b", profile(name = "Other"))))
+        assertEquals(listOf("b"), added)
+        assertEquals("Mine", s.profileOf("a")?.name)
+    }
+
+    @Test fun deletingRemovesServerAndCredentialFile() = runBlocking {
+        val s = store()
+        s.save(entry("a"))
+        s.save(entry("b"))
+        s.delete("a")
+        assertNull(s.load("a"))
+        assertEquals(listOf("b"), s.state.value.servers.map { it.id })
+        s.delete("b")
         assertTrue(s.state.value.servers.isEmpty())
-        assertNull(s.state.value.selectedId)
         assertFalse("credential file removed when the last server is deleted", file.exists())
     }
 
     @Test fun corruptedStorageIsDiscardedSafely() = runBlocking {
-        store().save(null, profile())
+        store().save(entry("a"))
         val bytes = file.readBytes()
         bytes[bytes.size - 1] = (bytes[bytes.size - 1].toInt() xor 0x01).toByte() // break the GCM tag
         file.writeBytes(bytes)
@@ -125,14 +143,13 @@ class ShadowsocksProfileStoreTest {
     }
 
     @Test fun missingKeystoreKeyStartsEmpty() = runBlocking {
-        store().save(null, profile())
+        store().save(entry("a"))
         val s = store(TestBox(key = null))
         s.refresh()
         assertTrue(s.state.value.servers.isEmpty())
-        assertNull(s.state.value.selected)
     }
 
-    @Test fun legacySingleProfileIsMigrated() = runBlocking {
+    @Test fun legacySingleProfileIsMigratedAsDevelopmentServer() = runBlocking {
         val legacy = File(dir, "ss_profile.bin")
         legacy.writeBytes(byteArrayOf(1) + box.seal("LEGACY".toByteArray()))
         val s = store(legacy = legacy, decoder = { bytes ->
@@ -140,16 +157,16 @@ class ShadowsocksProfileStoreTest {
             profile(name = "Migrated")
         })
         s.refresh()
-        assertEquals(listOf("Migrated"), s.state.value.servers.map { it.name })
-        assertEquals(s.state.value.servers.single().id, s.state.value.selectedId)
+        val migrated = s.state.value.servers.single()
+        assertEquals("Migrated", migrated.name)
+        assertTrue(migrated.isDevelopment)
+        assertEquals(profile(name = "Migrated"), s.profileOf(migrated.id))
         assertFalse(legacy.exists())
     }
 
-    @Test fun summariesAndToStringNeverContainTheKey() = runBlocking {
-        val s = store()
-        val id = s.save(null, profile())
-        assertFalse(s.state.value.toString().contains(key))
-        assertFalse(SavedServer(id, profile()).toString().contains(key))
+    @Test fun entriesAndToStringNeverContainTheKey() {
+        assertFalse(entry("a").toString().contains(key))
+        assertFalse(ConnectionConfig.Shadowsocks(profile()).toString().contains(key))
     }
 
     @Test fun chachaPasswordSurvivesPersistenceExactly() = runBlocking {
@@ -162,12 +179,16 @@ class ShadowsocksProfileStoreTest {
             method = ShadowsocksProfile.METHOD_CHACHA20_IETF_POLY1305,
             udpEnabled = false,
         )
-        val id = store().save(null, p)
-        assertEquals(p, store().load(id))
+        store().save(entry("c", p))
+        assertEquals(p, store().profileOf("c"))
     }
 
     @Test fun codecRoundTripAndRejectsTrailingData() {
-        val list = ServerList(listOf(SavedServer("x", profile())), "x")
+        val wg = ServerEntry(
+            ServerInfo("w", "WG", "Japan", "JP", null, VpnProtocol.WireGuard, isPremium = true, isRecommended = true),
+            ConnectionConfig.WireGuard("[Interface]\nPrivateKey = placeholder"),
+        )
+        val list = listOf(entry("x"), entry("y", countryCode = null), wg)
         assertEquals(list, ServerListCodec.decode(ServerListCodec.encode(list)))
         try {
             ServerListCodec.decode(ServerListCodec.encode(list) + byteArrayOf(0))

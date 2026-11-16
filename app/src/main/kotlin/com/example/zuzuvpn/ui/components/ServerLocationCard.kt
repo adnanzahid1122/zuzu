@@ -55,15 +55,17 @@ fun LocationCard(
     modifier: Modifier = Modifier,
 ) {
     val unavailable = directory == ServerDirectory.NotConfigured
+    val failed = directory is ServerDirectory.Failed
     val title = when {
         location != null -> location.name
-        unavailable -> stringResource(R.string.home_locations_unavailable_title)
+        unavailable || failed -> stringResource(R.string.home_locations_unavailable_title)
         else -> stringResource(R.string.home_location_choose)
     }
     val subtitle = when {
         location != null && !location.isAvailable -> stringResource(R.string.server_unavailable)
         location?.isDevelopment == true -> listOfNotNull(location.city, stringResource(R.string.location_development_subtitle)).joinToString(" · ")
-        location != null -> location.city ?: location.country.takeIf { it != location.name }
+        location != null -> listOfNotNull(location.city, location.country).distinct().filter { it != location.name }.joinToString(", ").ifEmpty { null }
+        failed -> stringResource(R.string.home_locations_unreachable_body)
         unavailable -> stringResource(R.string.home_locations_unavailable_body)
         else -> stringResource(R.string.home_location_choose_summary)
     }

@@ -13,8 +13,10 @@ enum class ConnectionPhase { Disconnected, Connecting, Connected }
 
 /** Problems the Home screen explains before (or instead of) starting the VPN. */
 enum class HomeNotice {
-    /** No trusted location source in this build (backend not implemented yet). */
+    /** No trusted location source in this build. */
     LocationsUnavailable,
+    /** The server directory could not be loaded (network or server problem). */
+    DirectoryUnreachable,
     /** The user pressed Connect without a location. */
     NoLocation,
     /** The selected server is unavailable or has no connection configuration. */

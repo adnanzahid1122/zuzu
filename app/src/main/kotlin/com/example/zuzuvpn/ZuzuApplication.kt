@@ -3,6 +3,10 @@ package com.example.zuzuvpn
 import android.app.Application
 import com.example.zuzuvpn.data.KeystoreSecretBox
 import com.example.zuzuvpn.data.ShadowsocksProfileStore
+import com.example.zuzuvpn.data.controlplane.ControlPlaneEndpoints
+import com.example.zuzuvpn.data.controlplane.ControlPlaneServerDataSource
+import com.example.zuzuvpn.data.controlplane.UrlConnectionHttpGetter
+import com.example.zuzuvpn.data.servers.CompositeServerDataSource
 import com.example.zuzuvpn.data.servers.PreferencesServerSelection
 import com.example.zuzuvpn.data.servers.ServerRepository
 import com.example.zuzuvpn.data.servers.ServerSelection
@@ -45,8 +49,20 @@ class AppContainer(app: Application) {
     /** Build-type specific: the debug test-server source and internal screens exist only in debug builds. */
     val developerTools: DeveloperTools = createDeveloperTools(app, this)
 
-    /** The UI's single entry point for servers; the data source behind it is replaceable. */
-    val servers = ServerRepository(developerTools.dataSource)
+    /** Public server directory from the Zuzu Control Plane (no credentials; no configurations yet). */
+    private val controlPlane = ControlPlaneServerDataSource(
+        http = UrlConnectionHttpGetter(userAgent = "ZuzuVPN-Android/${BuildConfig.VERSION_NAME}"),
+        endpoints = ControlPlaneEndpoints(BuildConfig.API_BASE_URL),
+    )
+
+    /**
+     * The UI's single entry point for servers. Release: the Control Plane directory. Debug: the
+     * Control Plane directory plus the local development test servers (which keep their own
+     * configurations, so the tested Shadowsocks connection path is unchanged).
+     */
+    val servers = ServerRepository(
+        developerTools.localDataSource?.let { local -> CompositeServerDataSource(listOf(controlPlane, local), appScope) } ?: controlPlane,
+    )
 }
 
 /** Payload of the first single-profile store (JSON). Kept only to migrate it. */
