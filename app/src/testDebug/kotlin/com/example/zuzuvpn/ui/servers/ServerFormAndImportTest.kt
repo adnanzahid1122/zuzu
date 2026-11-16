@@ -49,8 +49,8 @@ class ServerFormAndImportTest {
     }
 
     @Test fun unsupportedCipher() {
-        assertEquals(ProfileProblem.UnsupportedMethod, errors(form(m = "aes-256-gcm"))[FormField.Method])
-        assertEquals(ProfileProblem.UnsupportedMethod, errors(form(m = "2022-blake3-aes-256-gcm"))[FormField.Method])
+        assertEquals(ProfileProblem.UnsupportedMethod, errors(form(m = "aes-256-cfb"))[FormField.Method])
+        assertEquals(ProfileProblem.UnsupportedMethod, errors(form(m = "2022-blake3-aes-256-cfb"))[FormField.Method])
     }
 
     @Test fun invalidKeys() {
@@ -172,7 +172,7 @@ class ServerFormAndImportTest {
         )
         assertEquals(
             ServerImport.Outcome.InvalidProfile(ProfileProblem.UnsupportedMethod),
-            ServerImport.parse("ss://aes-256-gcm:password@h.example:8388"),
+            ServerImport.parse("ss://aes-256-cfb:password@h.example:8388"),
         )
     }
 

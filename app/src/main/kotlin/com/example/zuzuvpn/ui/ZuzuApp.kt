@@ -31,12 +31,13 @@ import com.example.zuzuvpn.ui.locations.LocationsRoute
 import com.example.zuzuvpn.ui.navigation.ZuzuBottomBar
 import com.example.zuzuvpn.ui.navigation.ZuzuDestination
 import com.example.zuzuvpn.ui.navigation.ZuzuNavigationRail
+import com.example.zuzuvpn.ui.account.AccountScreen
 import com.example.zuzuvpn.ui.settings.LicensesScreen
 import com.example.zuzuvpn.ui.settings.SettingsScreen
 import com.example.zuzuvpn.ui.theme.ZuzuColors
 
 /** Settings sub-screens. */
-private enum class SettingsPage { Main, Licenses, Developer }
+private enum class SettingsPage { Main, Licenses, Developer, Account }
 
 /**
  * App shell with the three consumer areas: Home, Locations and Settings. Bottom navigation on
@@ -64,12 +65,14 @@ fun ZuzuApp() {
             ZuzuDestination.Locations -> LocationsRoute(onLocationChosen = { select(ZuzuDestination.Home) })
             ZuzuDestination.Settings -> when {
                 settingsPage == SettingsPage.Licenses -> LicensesScreen(onBack = { settingsPage = SettingsPage.Main })
+                settingsPage == SettingsPage.Account -> AccountScreen(onBack = { settingsPage = SettingsPage.Main })
                 settingsPage == SettingsPage.Developer && developerUi != null -> developerUi.Screen(
                     onClose = { settingsPage = SettingsPage.Main },
                     onServerReady = { select(ZuzuDestination.Home) },
                 )
                 else -> SettingsScreen(
                     onOpenLicenses = { settingsPage = SettingsPage.Licenses },
+                    onOpenAccount = { settingsPage = SettingsPage.Account },
                     developerEntry = developerUi?.let { ui -> { ui.SettingsEntry(onOpen = { settingsPage = SettingsPage.Developer }) } },
                 )
             }

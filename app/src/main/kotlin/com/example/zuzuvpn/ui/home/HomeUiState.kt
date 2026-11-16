@@ -23,6 +23,13 @@ enum class HomeNotice {
     LocationNotReady,
     /** The user declined the system VPN permission dialog. */
     PermissionDenied,
+    /** Zuzu servers need a signed-in account (or the session ended). */
+    SignInRequired,
+    SubscriptionRequired,
+    PremiumRequired,
+    RateLimited,
+    /** The configuration response failed verification, or the device clock is far off. */
+    SecurityError,
 }
 
 data class HomeUiState(

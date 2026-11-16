@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zuzuvpn.ZuzuApplication
+import com.example.zuzuvpn.data.servers.ConfigResolution
 import com.example.zuzuvpn.data.servers.ServerCatalog
 import com.example.zuzuvpn.vpn.ConnectionRequest
 import kotlinx.coroutines.channels.Channel
@@ -68,16 +69,27 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             ConnectAction.ServerUnavailable -> showNotice(HomeNotice.LocationNotReady)
             is ConnectAction.Connect -> viewModelScope.launch {
                 val server = current.location
-                val config = servers.connectionConfig(action.serverId)
-                if (server == null || config == null) {
-                    showNotice(HomeNotice.LocationNotReady)
+                val resolution = servers.resolveConnection(action.serverId)
+                if (server == null || resolution !is ConfigResolution.Ready) {
+                    showNotice(noticeFor(resolution))
                 } else {
                     showNotice(null)
-                    pending = ConnectionRequest(server, config)
+                    // The decrypted configuration stays in memory: ConnectionRequest → ConnectionHandoff → service.
+                    pending = ConnectionRequest(server, resolution.config)
                     events.send(HomeEvent.RequestVpnPermission)
                 }
             }
         }
+    }
+
+    private fun noticeFor(resolution: ConfigResolution): HomeNotice = when (resolution) {
+        ConfigResolution.SignInRequired, ConfigResolution.SignedOut -> HomeNotice.SignInRequired
+        ConfigResolution.SubscriptionRequired -> HomeNotice.SubscriptionRequired
+        ConfigResolution.PremiumRequired -> HomeNotice.PremiumRequired
+        ConfigResolution.NetworkError -> HomeNotice.DirectoryUnreachable
+        ConfigResolution.RateLimited -> HomeNotice.RateLimited
+        ConfigResolution.SecurityError -> HomeNotice.SecurityError
+        ConfigResolution.Unavailable, is ConfigResolution.Ready -> HomeNotice.LocationNotReady
     }
 
     fun onPermissionResult(granted: Boolean) {

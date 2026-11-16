@@ -1,7 +1,9 @@
 package com.example.zuzuvpn.data.controlplane
 
 import android.util.Log
+import com.example.zuzuvpn.data.servers.ConfigResolution
 import com.example.zuzuvpn.data.servers.ConnectionConfig
+import com.example.zuzuvpn.delivery.SecureConfigProvider
 import com.example.zuzuvpn.data.servers.DirectoryError
 import com.example.zuzuvpn.data.servers.ServerDataSource
 import com.example.zuzuvpn.data.servers.ServerDirectory
@@ -14,9 +16,9 @@ import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 
 /**
- * Server directory from the Zuzu Control Plane's public endpoints. Public metadata only: this
- * source never returns a connection configuration ([connectionConfig] is always null), so selecting
- * one of its servers cannot start a VPN connection. Configuration delivery is a later stage.
+ * Server directory from the Zuzu Control Plane's public endpoints. The directory is public metadata
+ * only. Connection configurations come exclusively from encrypted per-device delivery
+ * ([SecureConfigProvider]) for a signed-in customer; never from the directory.
  *
  * Each [refresh] re-reads the whole directory, so servers added, changed, disabled or removed in
  * the dashboard appear on the next refresh. A failed refresh keeps the last good list and reports
@@ -26,6 +28,8 @@ class ControlPlaneServerDataSource(
     private val http: HttpGetter,
     private val endpoints: ControlPlaneEndpoints,
     private val maxPages: Int = 20,
+    /** Encrypted per-device configuration delivery; null = directory only (no configurations). */
+    private val configs: SecureConfigProvider? = null,
 ) : ServerDataSource {
     private val state = MutableStateFlow<ServerDirectory>(ServerDirectory.Loading)
     override val directory: StateFlow<ServerDirectory> = state.asStateFlow()
@@ -59,7 +63,14 @@ class ControlPlaneServerDataSource(
         }
     }
 
-    override suspend fun connectionConfig(serverId: String): ConnectionConfig? = null
+    override suspend fun connectionConfig(serverId: String): ConnectionConfig? =
+        (resolveConnection(serverId) as? ConfigResolution.Ready)?.config
+
+    override suspend fun resolveConnection(serverId: String): ConfigResolution {
+        val provider = configs ?: return ConfigResolution.Unavailable
+        val server = (state.value as? ServerDirectory.Available)?.servers?.firstOrNull { it.id == serverId } ?: return ConfigResolution.Unavailable
+        return provider.resolve(serverId, server.name)
+    }
 
     private suspend fun fetchServers(): List<ServerInfo> {
         val all = LinkedHashMap<String, ServerInfo>()

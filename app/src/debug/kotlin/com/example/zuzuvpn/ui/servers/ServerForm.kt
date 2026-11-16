@@ -63,7 +63,7 @@ data class ServerForm(
             ProfileProblem.InvalidPort -> FormField.Port
             ProfileProblem.UnsupportedMethod -> FormField.Method
             ProfileProblem.EmptyKey, ProfileProblem.InvalidKeyEncoding, ProfileProblem.WrongKeyLength,
-            ProfileProblem.InvalidPasswordCharacters -> FormField.Key
+            ProfileProblem.InvalidPasswordCharacters, ProfileProblem.IdentityChainUnsupported -> FormField.Key
         }
     }
 }

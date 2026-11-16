@@ -6,7 +6,17 @@ import com.example.zuzuvpn.data.ShadowsocksProfileStore
 import com.example.zuzuvpn.data.controlplane.ControlPlaneEndpoints
 import com.example.zuzuvpn.data.controlplane.ControlPlaneServerDataSource
 import com.example.zuzuvpn.data.controlplane.UrlConnectionHttpGetter
+import android.os.Build
 import com.example.zuzuvpn.data.servers.CompositeServerDataSource
+import com.example.zuzuvpn.delivery.AccountManager
+import com.example.zuzuvpn.delivery.AndroidKeystoreDeviceKeys
+import com.example.zuzuvpn.delivery.AppApi
+import com.example.zuzuvpn.delivery.DeviceInfo
+import com.example.zuzuvpn.delivery.FileEnvelopeCache
+import com.example.zuzuvpn.delivery.FileSessionStorage
+import com.example.zuzuvpn.delivery.HttpsJsonClient
+import com.example.zuzuvpn.delivery.SecureConfigProvider
+import kotlinx.coroutines.launch
 import com.example.zuzuvpn.data.servers.PreferencesServerSelection
 import com.example.zuzuvpn.data.servers.ServerRepository
 import com.example.zuzuvpn.data.servers.ServerSelection
@@ -50,9 +60,33 @@ class AppContainer(app: Application) {
     val developerTools: DeveloperTools = createDeveloperTools(app, this)
 
     /** Public server directory from the Zuzu Control Plane (no credentials; no configurations yet). */
+    private val endpoints = ControlPlaneEndpoints(BuildConfig.API_BASE_URL)
+    private val userAgent = "ZuzuVPN-Android/${BuildConfig.VERSION_NAME}"
+    private val appApi = AppApi(endpoints.root, HttpsJsonClient(userAgent))
+
+    /** Encrypted envelopes kept for offline reconnects (still device-encrypted, sealed again with a Keystore key). */
+    private val envelopeCache = FileEnvelopeCache(File(app.noBackupFilesDir, "config-cache"), KeystoreSecretBox("zuzu.configcache.v1"))
+
+    /**
+     * Customer session for this installation (Stage C): device keys in the Android Keystore, refresh
+     * token sealed with a Keystore key, access token in memory.
+     */
+    val account = AccountManager(
+        api = appApi,
+        keyStore = AndroidKeystoreDeviceKeys(app),
+        storage = FileSessionStorage(File(app.noBackupFilesDir, "session.bin"), KeystoreSecretBox("zuzu.session.v1")),
+        cache = envelopeCache,
+        deviceInfo = DeviceInfo(
+            label = listOf(Build.MANUFACTURER, Build.MODEL).filter { !it.isNullOrBlank() }.joinToString(" ").ifBlank { "Android device" },
+            model = Build.MODEL,
+            appVersion = BuildConfig.VERSION_NAME,
+        ),
+    ).also { appScope.launch { it.restore() } }
+
     private val controlPlane = ControlPlaneServerDataSource(
-        http = UrlConnectionHttpGetter(userAgent = "ZuzuVPN-Android/${BuildConfig.VERSION_NAME}"),
-        endpoints = ControlPlaneEndpoints(BuildConfig.API_BASE_URL),
+        http = UrlConnectionHttpGetter(userAgent = userAgent),
+        endpoints = endpoints,
+        configs = SecureConfigProvider(account, appApi, envelopeCache),
     )
 
     /**

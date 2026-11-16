@@ -56,7 +56,6 @@
     <string name="settings_app_id">Application ID</string>
     <string name="settings_licenses">Open-source licenses</string>
     <string name="settings_licenses_summary">WireGuard, wireguard-go, shadowsocks-rust, hev-socks5-tunnel, Rust crates, AndroidX and Kotlin notices</string>
-    <string name="settings_account_note">Account, devices and subscriptions arrive in a later phase.</string>
     <string name="licenses_title">Open-source licenses</string>
     <string name="licenses_loading">Loading licenses…</string>
     <string name="licenses_error">Could not read license notices.</string>
@@ -98,6 +97,42 @@
     <string name="vpn_error_directory_unreachable">Couldn\'t load Zuzu locations. Check your connection and try again.</string>
     <string name="home_locations_unreachable_body">Couldn\'t reach Zuzu\'s server directory. Tap to retry.</string>
     <string name="vpn_error_location_not_ready">This location is not available for connection right now.</string>
+    <string name="vpn_error_sign_in_required">Sign in under Settings → Account to connect to Zuzu locations.</string>
+    <string name="vpn_error_subscription_required">Your account has no active subscription.</string>
+    <string name="vpn_error_premium_required">This location needs a Premium plan.</string>
+    <string name="vpn_error_rate_limited">Too many attempts. Please try again in a minute.</string>
+    <string name="vpn_error_security">The connection settings could not be verified. Check that the date and time on this device are correct, then try again.</string>
+
+    <!-- Account (Settings) -->
+    <string name="settings_section_account">Account</string>
+    <string name="account_signed_out_summary">Sign in to connect to Zuzu locations</string>
+    <string name="account_sign_in">Sign in</string>
+    <string name="account_create">Create account</string>
+    <string name="account_sign_out">Sign out</string>
+    <string name="account_sign_out_summary">Signs this device out and deletes its keys</string>
+    <string name="account_title_sign_in">Sign in to Zuzu</string>
+    <string name="account_title_create">Create your Zuzu account</string>
+    <string name="account_email">E-mail</string>
+    <string name="account_password">Password</string>
+    <string name="account_password_hint">At least 12 characters</string>
+    <string name="account_switch_to_create">New to Zuzu? Create an account</string>
+    <string name="account_switch_to_sign_in">Already have an account? Sign in</string>
+    <string name="account_working">Please wait…</string>
+    <string name="account_device_note">This phone registers itself automatically after you sign in. Its keys stay in the phone\'s secure hardware.</string>
+    <string name="account_limit_title">Device limit reached</string>
+    <string name="account_limit_replace">Replace</string>
+    <string name="account_limit_cancel">Cancel</string>
+    <string name="account_ended_revoked">This device was signed out. Sign in again to continue.</string>
+    <string name="account_ended_disabled">This account is disabled. Contact support.</string>
+    <string name="account_ended_expired">Your session expired. Sign in again.</string>
+    <string name="account_error_invalid_credentials">Wrong e-mail or password.</string>
+    <string name="account_error_email_in_use">An account with this e-mail already exists.</string>
+    <string name="account_error_weak_password">Use a password of at least 12 characters.</string>
+    <string name="account_error_disabled">This account is disabled.</string>
+    <string name="account_error_rate_limited">Too many attempts. Try again later.</string>
+    <string name="account_error_network">Zuzu can\'t be reached. Check your connection.</string>
+    <string name="account_error_keystore">This phone\'s secure key storage is not available.</string>
+    <string name="account_error_generic">Sign-in failed. Please try again.</string>
     <string name="location_development_tag">Development</string>
     <string name="location_development_subtitle">Development test server</string>
 
@@ -123,6 +158,10 @@
 
     <string name="server_unavailable">Unavailable</string>
     <string name="server_premium_tag">Premium</string>
+    <plurals name="account_limit_body">
+        <item quantity="one">Your plan allows %1$d device. Replace it with this phone:</item>
+        <item quantity="other">Your plan allows %1$d devices. Replace one of them with this phone:</item>
+    </plurals>
     <plurals name="locations_server_count">
         <item quantity="one">%1$d server</item>
         <item quantity="other">%1$d servers</item>

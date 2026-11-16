@@ -420,6 +420,7 @@ fun problemText(problem: ProfileProblem): Int = when (problem) {
     ProfileProblem.InvalidKeyEncoding -> R.string.ss_error_key_encoding
     ProfileProblem.WrongKeyLength -> R.string.ss_error_key_length
     ProfileProblem.InvalidPasswordCharacters -> R.string.ss_error_password_chars
+    ProfileProblem.IdentityChainUnsupported -> R.string.ss_error_identity_chain
 }
 
 /** The supported ciphers as radio options; the recommended AEAD-2022 cipher comes first. */

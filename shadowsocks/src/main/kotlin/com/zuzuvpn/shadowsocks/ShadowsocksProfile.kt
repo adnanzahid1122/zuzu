@@ -4,11 +4,13 @@ package com.zuzuvpn.shadowsocks
  * A user-supplied Shadowsocks server.
  *
  * What [password] means depends on [method]:
- *  * AEAD-2022 (`2022-blake3-aes-128-gcm`): the SIP022 pre-shared key, base64 of exactly 16 bytes.
- *    Multi-user servers may give an identity chain `iPSK:uPSK`; every part must be such a key.
+ *  * AEAD-2022 (`2022-blake3-*`): the SIP022 pre-shared key, base64 of exactly the method's key
+ *    length (AES-128: 16 bytes; AES-256 and ChaCha20-Poly1305: 32 bytes). AES-2022 multi-user servers
+ *    may give an identity chain `iPSK:uPSK` (every part such a key); ChaCha20-2022 has no identity header.
  *    Surrounding whitespace is ignored.
- *  * Classic AEAD (`chacha20-ietf-poly1305`): a free-form password; shadowsocks-rust derives the
- *    key from its bytes (EVP_BytesToKey), so it is used exactly as entered and may contain ':'.
+ *  * Classic AEAD (`aes-128-gcm`, `aes-256-gcm`, `chacha20-ietf-poly1305`): a free-form password;
+ *    shadowsocks-rust derives the key from its bytes (EVP_BytesToKey), so it is used exactly as
+ *    entered and may contain ':'.
  *
  * [toString] never prints the password or key.
  */
@@ -28,22 +30,40 @@ data class ShadowsocksProfile(
 
     companion object {
         const val METHOD_2022_BLAKE3_AES_128_GCM = "2022-blake3-aes-128-gcm"
+        const val METHOD_2022_BLAKE3_AES_256_GCM = "2022-blake3-aes-256-gcm"
+        const val METHOD_2022_BLAKE3_CHACHA20_POLY1305 = "2022-blake3-chacha20-poly1305"
         const val METHOD_CHACHA20_IETF_POLY1305 = "chacha20-ietf-poly1305"
+        const val METHOD_AES_128_GCM = "aes-128-gcm"
+        const val METHOD_AES_256_GCM = "aes-256-gcm"
 
         /**
-         * Ciphers this client accepts, in display order: Zuzu's preferred AEAD-2022 cipher, plus the
-         * classic AEAD cipher used by existing servers. Both are compiled into libzuzuss.so
-         * (shadowsocks-rust features aead-cipher-2022 and aead-cipher).
+         * Exactly the methods compiled into libzuzuss.so: shadowsocks-rust 1.25.0 with features
+         * aead-cipher (shadowsocks-crypto v1-aead: AES-128/256-GCM, ChaCha20-Poly1305) and
+         * aead-cipher-2022 (v2: the three 2022-blake3 methods). Stream ciphers (CFB/CTR, Camellia,
+         * RC4-MD5, Salsa20, ChaCha20, table) are NOT compiled in and are refused. Identifiers are
+         * passed to the engine unchanged (never aliased). See docs/shadowsocks-ciphers.md.
          */
-        val SUPPORTED_METHODS = listOf(METHOD_2022_BLAKE3_AES_128_GCM, METHOD_CHACHA20_IETF_POLY1305)
+        val SUPPORTED_METHODS = listOf(
+            METHOD_2022_BLAKE3_AES_128_GCM,
+            METHOD_2022_BLAKE3_AES_256_GCM,
+            METHOD_2022_BLAKE3_CHACHA20_POLY1305,
+            METHOD_CHACHA20_IETF_POLY1305,
+            METHOD_AES_256_GCM,
+            METHOD_AES_128_GCM,
+        )
 
         fun isAead2022(method: String): Boolean = method.startsWith("2022-")
 
         /** Required key length in bytes for AEAD-2022 methods; null for password-based methods. */
         fun keyLength(method: String): Int? = when (method) {
             METHOD_2022_BLAKE3_AES_128_GCM -> 16
+            METHOD_2022_BLAKE3_AES_256_GCM, METHOD_2022_BLAKE3_CHACHA20_POLY1305 -> 32
             else -> null
         }
+
+        /** SIP022 identity headers (iPSK:uPSK) exist only for the AES-2022 methods. */
+        fun supportsIdentityChain(method: String): Boolean =
+            method == METHOD_2022_BLAKE3_AES_128_GCM || method == METHOD_2022_BLAKE3_AES_256_GCM
 
         /** AEAD-2022 keys are base64, so whitespace is trimmed; classic passwords are kept verbatim. */
         fun normalizedPassword(method: String, password: String): String =
@@ -62,6 +82,8 @@ enum class ProfileProblem {
     WrongKeyLength,
     /** Classic AEAD password contains control characters (usually a pasted line break). */
     InvalidPasswordCharacters,
+    /** iPSK:uPSK given for a method without identity headers (2022-blake3-chacha20-poly1305). */
+    IdentityChainUnsupported,
 }
 
 object ShadowsocksProfileValidator {
@@ -84,6 +106,8 @@ object ShadowsocksProfileValidator {
         when {
             password.isBlank() -> add(ProfileProblem.EmptyKey)
             !supported -> Unit
+            ShadowsocksProfile.isAead2022(method) && password.contains(':') && !ShadowsocksProfile.supportsIdentityChain(method) ->
+                add(ProfileProblem.IdentityChainUnsupported)
             ShadowsocksProfile.isAead2022(method) ->
                 keyProblem(password, ShadowsocksProfile.keyLength(method)!!)?.let(::add)
             password.any { it.isISOControl() } -> add(ProfileProblem.InvalidPasswordCharacters)

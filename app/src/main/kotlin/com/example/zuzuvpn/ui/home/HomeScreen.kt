@@ -237,6 +237,11 @@ private fun noticeText(notice: HomeNotice): Int = when (notice) {
     HomeNotice.NoLocation -> R.string.vpn_error_no_location
     HomeNotice.LocationNotReady -> R.string.vpn_error_location_not_ready
     HomeNotice.PermissionDenied -> R.string.vpn_error_permission
+    HomeNotice.SignInRequired -> R.string.vpn_error_sign_in_required
+    HomeNotice.SubscriptionRequired -> R.string.vpn_error_subscription_required
+    HomeNotice.PremiumRequired -> R.string.vpn_error_premium_required
+    HomeNotice.RateLimited -> R.string.vpn_error_rate_limited
+    HomeNotice.SecurityError -> R.string.vpn_error_security
 }
 
 @StringRes

@@ -45,7 +45,7 @@
     <string name="ss_editor_port">Port</string>
     <string name="ss_editor_method">Cipher</string>
     <string name="ss_editor_key">Key (base64)</string>
-    <string name="ss_editor_key_hint">The server\'s pre-shared key: 16 bytes, base64-encoded</string>
+    <string name="ss_editor_key_hint">The server\'s pre-shared key, base64-encoded: 16 bytes (2022-blake3-aes-128-gcm) or 32 bytes (aes-256 and chacha20 2022 ciphers)</string>
     <string name="ss_editor_password">Password</string>
     <string name="ss_editor_password_hint">Exactly as in your server configuration</string>
     <string name="ss_cipher_2022_summary">Recommended. Shadowsocks 2022 with replay protection; uses a base64 key.</string>
@@ -62,10 +62,11 @@
     <string name="ss_editor_reconnect_note">Changes apply the next time you connect.</string>
     <string name="ss_error_host">Enter a valid host name or IP address.</string>
     <string name="ss_error_port">Enter a port from 1 to 65535.</string>
-    <string name="ss_error_method">Supported ciphers: 2022-blake3-aes-128-gcm and chacha20-ietf-poly1305.</string>
+    <string name="ss_error_method">Supported ciphers: 2022-blake3-aes-128-gcm, 2022-blake3-aes-256-gcm, 2022-blake3-chacha20-poly1305, chacha20-ietf-poly1305, aes-256-gcm, aes-128-gcm. Legacy stream ciphers are not supported.</string>
     <string name="ss_error_key_empty">Enter the key.</string>
     <string name="ss_error_key_encoding">The key must be base64.</string>
-    <string name="ss_error_key_length">The key must decode to exactly 16 bytes for 2022-blake3-aes-128-gcm.</string>
+    <string name="ss_error_key_length">The key has the wrong length: 2022-blake3-aes-128-gcm needs 16 bytes; 2022-blake3-aes-256-gcm and 2022-blake3-chacha20-poly1305 need 32 bytes.</string>
+    <string name="ss_error_identity_chain">2022-blake3-chacha20-poly1305 takes a single key (no iPSK:uPSK chain).</string>
     <string name="ss_error_uri">This is not a valid ss:// link.</string>
     <string name="ss_error_uri_plugin">Links that need a plugin (obfs, v2ray-plugin, …) are not supported.</string>
     <string name="ss_error_save">The server could not be saved.</string>

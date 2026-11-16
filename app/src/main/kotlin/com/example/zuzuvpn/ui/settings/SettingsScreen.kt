@@ -1,5 +1,10 @@
 package com.example.zuzuvpn.ui.settings
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.zuzuvpn.delivery.AccountState
+import com.example.zuzuvpn.ui.account.AccountViewModel
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -40,6 +45,7 @@ import com.example.zuzuvpn.ui.theme.ZuzuColors
 @Composable
 fun SettingsScreen(
     onOpenLicenses: () -> Unit,
+    onOpenAccount: () -> Unit,
     modifier: Modifier = Modifier,
     developerEntry: (@Composable () -> Unit)? = null,
 ) {
@@ -58,6 +64,8 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
             )
+
+            AccountSection(onOpenAccount)
 
             SettingsSection(stringResource(R.string.settings_section_connection)) {
                 LinkRow(
@@ -81,13 +89,33 @@ fun SettingsScreen(
                 )
             }
 
-            Text(
-                stringResource(R.string.settings_account_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = ZuzuColors.TextMuted,
-            )
-
             developerEntry?.invoke()
+        }
+    }
+}
+
+/** Signed out: opens sign-in. Signed in: shows the e-mail and offers sign out (deletes this device's keys). */
+@Composable
+private fun AccountSection(onOpenAccount: () -> Unit, viewModel: AccountViewModel = viewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val form by viewModel.formState.collectAsStateWithLifecycle()
+    SettingsSection(stringResource(R.string.settings_section_account)) {
+        when (val s = state) {
+            is AccountState.SignedIn -> {
+                SettingsRow(stringResource(R.string.account_email), s.email)
+                HorizontalDivider(color = ZuzuColors.NavyHigh)
+                LinkRow(
+                    title = stringResource(if (form.busy) R.string.account_working else R.string.account_sign_out),
+                    summary = stringResource(R.string.account_sign_out_summary),
+                    onClick = { if (!form.busy) viewModel.signOut() },
+                )
+            }
+            AccountState.Loading -> SettingsRow(stringResource(R.string.settings_section_account), stringResource(R.string.account_working))
+            is AccountState.SignedOut -> LinkRow(
+                title = stringResource(R.string.account_sign_in),
+                summary = stringResource(R.string.account_signed_out_summary),
+                onClick = onOpenAccount,
+            )
         }
     }
 }

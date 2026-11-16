@@ -35,7 +35,7 @@ class ShadowsocksProfileTest {
     }
 
     @Test fun rejectsBadHostPortAndMethod() {
-        val problems = ShadowsocksProfileValidator.validate(profile(host = "999.1.1.1", port = 70000, m = "aes-256-gcm"))
+        val problems = ShadowsocksProfileValidator.validate(profile(host = "999.1.1.1", port = 70000, m = "aes-256-cfb"))
         assertTrue(ProfileProblem.InvalidHost in problems)
         assertTrue(ProfileProblem.InvalidPort in problems)
         assertTrue(ProfileProblem.UnsupportedMethod in problems)
@@ -173,7 +173,7 @@ class ShadowsocksProfileTest {
         ShadowsocksProfile(name = "t", host = "203.0.113.9", port = 443, password = password, method = chacha)
 
     @Test fun chachaIsSupportedAlongside2022() {
-        assertEquals(listOf(ShadowsocksProfile.METHOD_2022_BLAKE3_AES_128_GCM, chacha), ShadowsocksProfile.SUPPORTED_METHODS)
+        assertTrue(ShadowsocksProfile.SUPPORTED_METHODS.containsAll(listOf(ShadowsocksProfile.METHOD_2022_BLAKE3_AES_128_GCM, chacha)))
         assertTrue(ShadowsocksProfileValidator.validate(classic()).isEmpty())
         assertTrue(ShadowsocksProfileValidator.validate(profile()).isEmpty()) // 2022 still valid
     }
@@ -192,9 +192,57 @@ class ShadowsocksProfileTest {
         assertEquals(listOf(ProfileProblem.InvalidPasswordCharacters), ShadowsocksProfileValidator.validate(classic("secret\n")))
     }
 
-    @Test fun otherClassicCiphersStayUnsupported() {
-        listOf("aes-256-gcm", "aes-128-gcm", "chacha20-poly1305", "2022-blake3-chacha20-poly1305", "rc4-md5").forEach {
+    @Test fun legacyAndUnknownCiphersStayUnsupported() {
+        // Not compiled into libzuzuss.so (no stream-cipher feature), plus near-miss spellings that must never be aliased.
+        listOf(
+            "aes-128-cfb", "aes-192-cfb", "aes-256-cfb", "aes-128-ctr", "aes-192-ctr", "aes-256-ctr", "chacha20-ietf",
+            "camellia-128-cfb", "camellia-192-cfb", "camellia-256-cfb", "rc4-md5", "salsa20", "chacha20", "table",
+            "chacha20-poly1305", "AES-256-GCM", "2022-blake3-chacha8-poly1305", "none", "plain", "",
+        ).forEach {
             assertTrue(it, ProfileProblem.UnsupportedMethod in ShadowsocksProfileValidator.validate(classic().copy(method = it)))
+        }
+    }
+
+    @Test fun supportsExactlyTheCompiledAeadMethods() {
+        assertEquals(
+            listOf("2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305", "chacha20-ietf-poly1305", "aes-256-gcm", "aes-128-gcm"),
+            ShadowsocksProfile.SUPPORTED_METHODS,
+        )
+    }
+
+    private fun b64(bytes: Int, fill: Int = 7) = java.util.Base64.getEncoder().encodeToString(ByteArray(bytes) { (it * fill + 1).toByte() })
+
+    @Test fun every2022MethodRequiresItsExactKeyLength() {
+        for ((method, length) in listOf("2022-blake3-aes-128-gcm" to 16, "2022-blake3-aes-256-gcm" to 32, "2022-blake3-chacha20-poly1305" to 32)) {
+            val ok = classic().copy(method = method, password = b64(length))
+            assertTrue(method, ShadowsocksProfileValidator.validate(ok).isEmpty())
+            val wrong = classic().copy(method = method, password = b64(if (length == 16) 32 else 16))
+            assertEquals(method, listOf(ProfileProblem.WrongKeyLength), ShadowsocksProfileValidator.validate(wrong))
+            assertEquals(method, listOf(ProfileProblem.InvalidKeyEncoding), ShadowsocksProfileValidator.validate(classic().copy(method = method, password = "plain password")))
+        }
+    }
+
+    @Test fun identityChainsOnlyForAes2022() {
+        assertTrue(ShadowsocksProfileValidator.validate(classic().copy(method = "2022-blake3-aes-256-gcm", password = "${b64(32)}:${b64(32, 3)}")).isEmpty())
+        assertEquals(
+            listOf(ProfileProblem.IdentityChainUnsupported),
+            ShadowsocksProfileValidator.validate(classic().copy(method = "2022-blake3-chacha20-poly1305", password = "${b64(32)}:${b64(32, 3)}")),
+        )
+    }
+
+    @Test fun everyClassicAeadMethodTakesAVerbatimPassword() {
+        for (method in listOf("chacha20-ietf-poly1305", "aes-256-gcm", "aes-128-gcm")) {
+            val p = classic().copy(method = method, password = " pässwörd:with spaces ")
+            assertTrue(method, ShadowsocksProfileValidator.validate(p).isEmpty())
+            assertEquals(" pässwörd:with spaces ", p.effectivePassword)
+        }
+    }
+
+    @Test fun configBuilderPassesEveryMethodIdentifierUnchanged() {
+        for (method in ShadowsocksProfile.SUPPORTED_METHODS) {
+            val key = ShadowsocksProfile.keyLength(method)?.let { b64(it) } ?: "a password"
+            val json = SsConfigBuilder.build(classic().copy(method = method, password = key), "203.0.113.5", 1080)
+            assertTrue(method, json.contains("\"method\":\"$method\""))
         }
     }
 

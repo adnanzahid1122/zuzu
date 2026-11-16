@@ -68,6 +68,29 @@ interface ServerDataSource {
 
     /** The private configuration for [serverId], or null if unknown / not authorized. */
     suspend fun connectionConfig(serverId: String): ConnectionConfig?
+
+    /** Like [connectionConfig], but says why there is no configuration (shown to the user). Never throws. */
+    suspend fun resolveConnection(serverId: String): ConfigResolution =
+        connectionConfig(serverId)?.let { ConfigResolution.Ready(it) } ?: ConfigResolution.Unavailable
+}
+
+/** Outcome of resolving a server's private configuration. */
+sealed interface ConfigResolution {
+    data class Ready(val config: ConnectionConfig) : ConfigResolution
+
+    /** Not available for connection (unknown, inactive, or no configuration in this build). */
+    data object Unavailable : ConfigResolution
+    data object SignInRequired : ConfigResolution
+    data object SubscriptionRequired : ConfigResolution
+    data object PremiumRequired : ConfigResolution
+
+    /** This device was signed out (revoked) or the account was disabled; the user must sign in again. */
+    data object SignedOut : ConfigResolution
+    data object RateLimited : ConfigResolution
+    data object NetworkError : ConfigResolution
+
+    /** The response failed verification (tampered, wrong key, expired, ...) or the app clock is far off. */
+    data object SecurityError : ConfigResolution
 }
 
 /** A build without any server source: honestly reports that no servers are available. */
@@ -99,11 +122,12 @@ class CompositeServerDataSource(private val sources: List<ServerDataSource>, sco
      * [merge]) is asked. Another source can therefore never supply the configuration for a server
      * shown with the Control Plane's metadata, nor relabel a local test server via a colliding id.
      */
-    override suspend fun connectionConfig(serverId: String): ConnectionConfig? {
-        val owner = sources.firstOrNull { source ->
-            (source.directory.value as? ServerDirectory.Available)?.servers?.any { it.id == serverId } == true
-        }
-        return owner?.connectionConfig(serverId)
+    override suspend fun connectionConfig(serverId: String): ConnectionConfig? = ownerOf(serverId)?.connectionConfig(serverId)
+
+    override suspend fun resolveConnection(serverId: String): ConfigResolution = ownerOf(serverId)?.resolveConnection(serverId) ?: ConfigResolution.Unavailable
+
+    private fun ownerOf(serverId: String): ServerDataSource? = sources.firstOrNull { source ->
+        (source.directory.value as? ServerDirectory.Available)?.servers?.any { it.id == serverId } == true
     }
 
     companion object {
@@ -141,6 +165,9 @@ class ServerRepository(private val source: ServerDataSource) {
 
     /** Private configuration for the connection layer only (never for display). */
     suspend fun connectionConfig(serverId: String): ConnectionConfig? = source.connectionConfig(serverId)
+
+    /** For the UI: the configuration or the reason there is none. */
+    suspend fun resolveConnection(serverId: String): ConfigResolution = source.resolveConnection(serverId)
 }
 
 /** Pure grouping, search and selection rules (unit-tested). */
